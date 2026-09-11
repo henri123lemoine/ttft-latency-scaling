@@ -147,6 +147,35 @@ def marginal_seconds_per_10k(c: dict[str, float], tokens: int) -> float:
     return (c["beta"] + 2 * c["gamma"] * tokens / 1e6) / 100
 
 
+def per_block_curvature(rows: list[Observation]) -> dict:
+    gammas = []
+    for block in sorted({r[0] for r in rows}):
+        block_rows = [r for r in rows if r[0] == block]
+        x = np.array([r[1] for r in block_rows])
+        y = np.array([r[2] for r in block_rows])
+        gammas.append(float(np.polyfit(x, y, 2)[0]))
+    gammas = np.array(gammas)
+    se = float(gammas.std(ddof=1) / np.sqrt(len(gammas)))
+    t = float(gammas.mean() / se)
+    return {
+        "gammas": [float(g) for g in gammas],
+        "mean": float(gammas.mean()),
+        "se": se,
+        "p_zero": float(2 * stats.t.sf(abs(t), len(gammas) - 1)),
+    }
+
+
+def floor_gamma_interval(xs: np.ndarray, ys: np.ndarray) -> dict:
+    design = np.column_stack([np.ones_like(xs), xs, xs**2])
+    beta, *_ = np.linalg.lstsq(design, ys, rcond=None)
+    residual = ys - design @ beta
+    df = len(xs) - 3
+    covariance = (residual @ residual) / df * np.linalg.inv(design.T @ design)
+    se = float(np.sqrt(covariance[2, 2]))
+    half_width = float(stats.t.ppf(0.975, df) * se)
+    return {"se": se, "ci95": [float(beta[2] - half_width), float(beta[2] + half_width)]}
+
+
 def analyse() -> list[dict]:
     observations = read_observations()
     epoch = read_epoch_fits()
@@ -163,6 +192,8 @@ def analyse() -> list[dict]:
                 "blocks": len({r[0] for r in rows}),
                 "floor": [{"x": float(x), "ttft": float(y)} for x, y in zip(xs, floor)],
                 "floor_fit": fit,
+                "floor_gamma_interval": floor_gamma_interval(xs, floor),
+                "per_block_curvature": per_block_curvature(rows),
                 "floor_bootstrap": block_bootstrap(rows, rng),
                 "floor_sensitivity": leave_one_out(rows),
                 "epoch_student_t": {str(d): c for d, c in epoch[model].items()},
@@ -228,12 +259,19 @@ def write_tables(models: list[dict]) -> None:
 def main() -> None:
     models = analyse()
     write_tables(models)
+    blocks = {m["model"]: m["per_block_curvature"]["gammas"] for m in models}
+    for a, b in [("Claude Sonnet 5", "GPT-5.6 Sol"), ("Claude Sonnet 5", "GPT-5.6 Terra"), ("Claude Sonnet 5", "Claude Opus 5")]:
+        t, p = stats.ttest_ind(blocks[a], blocks[b], equal_var=False)
+        print(f"per-block γ, {a} vs {b}: Welch t={t:.2f} p={p:.1e}")
     for m in models:
         f = m["floor_fit"]
         s = m["floor_sensitivity"]
         marginal = {row["input_tokens"]: row for row in m["marginal_seconds_per_10k_tokens"]}
+        ci = m["floor_gamma_interval"]["ci95"]
+        pb = m["per_block_curvature"]
         print(
-            f"{m['model']:16s} floor γ={f['quadratic']['gamma']:5.1f} (F={f['f_statistic']:5.1f}, p={f['p_value']:.3f})"
+            f"{m['model']:16s} floor γ={f['quadratic']['gamma']:5.1f} 95% CI [{ci[0]:.1f}, {ci[1]:.1f}]"
+            f"  per-block γ mean={pb['mean']:5.1f} se={pb['se']:.1f} p(γ=0)={pb['p_zero']:.2f}"
             f"  Epoch Student-t γ={m['epoch_student_t']['2']['gamma']:5.1f}"
             f"  drop-block [{min(s['drop_one_block_gamma']):.1f}, {max(s['drop_one_block_gamma']):.1f}]"
             f"  marginal 10M/1M: Epoch {marginal[10_000_000]['epoch_primary'] / marginal[1_000_000]['epoch_primary']:.1f}x,"

@@ -5,7 +5,8 @@ request at each context length instead of the centre of the request
 distribution. Provider-side queueing, routing, and cache placement add latency
 but never remove it, so the per-length minimum is the closest available view of
 the serving curve. `analysis/figures_floor.R` re-renders Figures 1-4 and A1 with
-that fit added, using the same theme, scales, and fonts as `analysis/figures.R`.
+that fit added, in the layout and palette of the published web post (Inter
+stands in for Messina Sans).
 
 ```bash
 make floor
@@ -24,6 +25,16 @@ Quadratic coefficient γ (seconds per million tokens squared):
 | Claude Sonnet 5 | 0.4 | −0.2 | −0.2 … 0.6 | 0.0 … 1.8 |
 | Claude Opus 5 | 9.3 | 1.6 | 7.1 … 9.8 | 6.5 … 10.1 |
 | GPT-6 Astra | 13.3 | 11.6 | 9.4 … 14.9 | 12.5 … 14.1 |
+
+Per-pass curvature (one quadratic per chronological block) gives an
+independent check that does not rely on minima: Sonnet mean γ 0.9 ± 1.2 over 14
+passes (p = 0.47 against zero); Sol 10.8 ± 1.4; Terra 9.5 ± 1.6. A Welch test of
+Sonnet against Sol gives t = −5.4, p = 3 × 10⁻⁴, so Sonnet's flat curve is not a
+sampling fluke of a Sol-like distribution. The floor-fit 95% interval for Sonnet
+is −1.4 to 2.1, which rules out Sol-like curvature but not a hybrid with a
+quadratic term a third the size. Opus per-pass γ is 0 ± 4.4: within a pass the
+slow requests dominate, which is why the floor, not the average, carries the
+Opus signal.
 
 Marginal TTFT per 10,000 additional input tokens, 10M relative to 1M: Terra
 7.7× under the upstream fit and 7.5× under the floor fit; Sol 6.8× and 6.9×;

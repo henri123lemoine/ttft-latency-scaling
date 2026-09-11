@@ -1,4 +1,4 @@
-"model_label","method","intercept","linear","quadratic"
+"model","method","intercept","linear","quadratic"
 "GPT-5.6 Terra","Floor fit",0.414943978416685,5.61496350767154,7.47312366250838
 "GPT-5.6 Sol","Floor fit",0.269387633699524,11.3986913194544,10.8111229539558
 "Claude Sonnet 5","Floor fit",0.359378527412792,11.8552429069939,0.388612969048573
