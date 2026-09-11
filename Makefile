@@ -1,7 +1,7 @@
 PYTHON ?= python3
 RSCRIPT ?= Rscript
 
-.PHONY: validate results figures reproduce astra astra-results astra-figures
+.PHONY: floor validate results figures reproduce astra astra-results astra-figures
 
 validate:
 	$(PYTHON) scripts/validate_release.py
@@ -23,3 +23,6 @@ astra: astra-results
 	$(RSCRIPT) analysis/figures.R --astra-api
 
 reproduce: results figures astra
+
+floor:
+	uv run analysis/floor.py
