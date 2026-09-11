@@ -26,3 +26,4 @@ reproduce: results figures astra
 
 floor:
 	uv run analysis/floor.py
+	$(RSCRIPT) analysis/figures_floor.R
