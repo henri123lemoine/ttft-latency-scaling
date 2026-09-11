@@ -197,8 +197,8 @@ draw_legend <- function(entries, y, x = 0.08, size = 11) {
   }
 }
 
-draw_footer <- function(caption) {
-  if (nzchar(caption)) text_grob(caption, 0.08, 0.085, 10, color = muted)
+draw_footer <- function(caption, caption_y = 0.085) {
+  if (nzchar(caption)) text_grob(caption, 0.08, caption_y, 10, color = muted)
   grid.lines(x = unit(c(0.08, 0.92), "npc"), y = unit(c(0.045, 0.045), "npc"), gp = gpar(col = grid_line, lwd = 1))
   text_grob("Data and fits: Epoch AI (CC-BY). Floor fit added.", 0.08, 0.03, 9.5, color = muted, just = c("left", "top"))
   text_grob("henrilemoine.com", 0.92, 0.03, 9.5, color = muted, just = c("right", "top"))
@@ -381,6 +381,56 @@ export_figure("figure_4_extrapolation_with_floor", function() {
   text_grob("Input context (million tokens)", 0.08 + 0.84 * 0.42, 0.20, 11, color = body_ink, just = c("center", "top"))
   draw_footer("Measured data end below 1 million tokens; beyond that, these are stress-test extrapolations, not forecasts.\nDashed: Epoch's fits. Solid: quadratic fits to the fastest request at each length.")
 })
+
+# ------------------------------------------------- figure 5: curvature ------
+# Two independent intervals for the quadratic coefficient of each model, read
+# from outputs/floor/fits.json (written by analysis/floor.py).
+
+curvature <- jsonlite::fromJSON(file.path(repo_root, "outputs/floor/fits.json"), simplifyVector = FALSE)$models
+row_order <- c("Claude Sonnet 5", "Claude Opus 5", "GPT-5.6 Terra", "GPT-5.6 Sol", "GPT-6 Astra")
+interval_rows <- do.call(rbind, lapply(curvature, function(m) {
+  passes <- length(m$per_block_curvature$gammas)
+  half <- qt(0.975, passes - 1) * m$per_block_curvature$se
+  rbind(
+    data.frame(model = m$model, method = "Floor fit", estimate = m$floor_fit$quadratic$gamma,
+      low = m$floor_gamma_interval$ci95[[1]], high = m$floor_gamma_interval$ci95[[2]], passes = passes),
+    data.frame(model = m$model, method = "One quadratic per pass", estimate = m$per_block_curvature$mean,
+      low = m$per_block_curvature$mean - half, high = m$per_block_curvature$mean + half, passes = passes)
+  )
+}))
+interval_rows$label <- sprintf("%s (%d passes)", interval_rows$model, interval_rows$passes)
+label_order <- unique(interval_rows$label[match(row_order, interval_rows$model)])
+interval_rows$label <- factor(interval_rows$label, levels = rev(label_order))
+interval_rows$method <- factor(interval_rows$method, levels = c("Floor fit", "One quadratic per pass"))
+
+curvature_panel <- ggplot(interval_rows, aes(y = label, color = method)) +
+  geom_vline(xintercept = 0, color = body_ink, linewidth = 0.5) +
+  geom_errorbarh(aes(xmin = low, xmax = high), height = 0, linewidth = 1.1,
+    position = position_dodge(width = 0.55), lineend = "round") +
+  geom_point(aes(x = estimate), size = 3, position = position_dodge(width = 0.55)) +
+  scale_color_manual(values = c("Floor fit" = floor_color, "One quadratic per pass" = teal)) +
+  scale_x_continuous(limits = c(-12, 20), breaks = seq(-10, 20, 5), expand = expansion(mult = 0)) +
+  panel_theme +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(color = grid_line, linewidth = 0.5),
+    axis.line.x = element_blank(),
+    axis.text.y = element_text(size = 11, color = body_ink, hjust = 0, margin = margin(r = 10))
+  )
+
+export_figure("figure_5_curvature_intervals", function() {
+  grid.newpage()
+  text_grob("Only Claude Sonnet 5 has curvature consistent with zero", 0.08, 0.955, 15.5, face = "bold")
+  draw_legend(list(
+    list(kind = "line", color = floor_color, label = "Floor fit, 95% interval", lwd = 3),
+    list(kind = "line", color = teal, label = "One quadratic per chronological pass, mean and 95% interval", lwd = 3)
+  ), 0.87)
+  place(curvature_panel, 0.08, 0.30, 0.84, 0.53)
+  text_grob("Quadratic coefficient of TTFT in context length (seconds per million tokens squared)",
+    0.08 + 0.84 * 0.6, 0.275, 11, color = body_ink, just = c("center", "top"))
+  draw_footer("The floor fit uses only the fastest request at each length. The per-pass fit uses every request in one\nsweep over all lengths, so slow requests contaminate it; for Opus that widens the interval to cover zero.",
+    caption_y = 0.135)
+}, width = 8.6, height = 6.6)
 
 write.csv(fits[fits$method == "Floor fit", ], file.path(output_dir, "floor_fit_coefficients.csv"), row.names = FALSE)
 cat("Generated floor-overlay figures in", output_dir, "\n")
