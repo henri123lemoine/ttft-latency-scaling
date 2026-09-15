@@ -13,10 +13,11 @@ The release preparation script removes these operational fields:
 - `ratelimit_reset_tokens`
 - `ratelimit_remaining_tokens`
 
-They are not inputs to any reported calculation. Session IDs, hashed prompt and
-cache identities, the general platform string, and the stated network location
-are retained because they document the experimental setup without revealing API
-credentials. API keys were loaded from `.env` and were never written to the logs.
+They are not inputs to any reported calculation. Session IDs and hashed prompt
+and cache identities are retained. The final four-model logs retain the general
+platform string and stated network location because they document the
+experimental setup without revealing API credentials. API keys were loaded from
+`.env` and were never written to the logs.
 
 The original private logs remain outside this repository.
 
@@ -29,3 +30,13 @@ logged; the logs contain prompt/cache hashes, not API credentials. Timestamps,
 model/generation settings, all completed measurements, and both cache-setup
 records are retained. The interrupted session is not given an invented
 `session_end` record. Only direct API sessions are included.
+
+## Exploratory-session archive
+
+The 22 files in `data/raw/exploratory/` apply the base redactions and also omit
+`network_label`, `platform`, and `hard_cost_limit_usd`, where present. The flat
+CSV export intentionally excludes free-text output previews and cache-buster
+values, although those remain in the sanitized JSONL for protocol audit. The
+archive contains direct API observations only. It does not contain API keys,
+authorization headers, full serialized request bodies, subscription-account
+records, or private website source.

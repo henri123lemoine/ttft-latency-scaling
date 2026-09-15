@@ -15,6 +15,11 @@ It supports two separate tasks:
 2. **Fresh collection:** inspect or rerun the API protocol using your own keys,
    subject to current model availability, pricing, and provider behavior.
 
+A separate [exploratory session archive](docs/exploratory-data.md) releases 303
+additional request-level observations from 22 direct-API sessions that preceded
+or followed the finalized sessions. It is provided for transparency and
+secondary analysis. It is not pooled into the headline fits or Figures 1–4.
+
 The fresh collector reproduces the experimental design. It cannot reproduce the
 historical provider load, routing, queueing, cache placement, or hardware state
 under which the archived observations were collected.
@@ -26,6 +31,7 @@ analysis/             canonical fits, bootstraps, dispersion check, and figures
 config/               API/model settings and final-session specifications
 data/raw/final/        four sanitized finalized JSONL sessions
 data/raw/supporting/   two uncached Sonnet sessions cited in the methodology
+data/raw/exploratory/  22 sanitized exploratory and follow-up sessions
 data/corpus/           exact combined Gutenberg corpus and hashes
 data/prompts/          provider token-count cut points used by the collector
 data/schedules/        observed request order for each released session
@@ -34,6 +40,7 @@ figures/               reproducible neutral Figures 1–4 in PNG, SVG, and PDF
 outputs/               authoritative generated tables and bootstrap draws
 data/raw/astra-api/     two sanitized Astra API logs (24 measurements + 2 setup requests)
 outputs/astra-api/      independently regenerated Astra fit and observation tables
+outputs/exploratory/    descriptive exports for the 22-session archive
 figures/astra-api/      additional neutral Astra-only plot
 src/ttft_bench/        optional paid API collection client
 ```
@@ -87,6 +94,17 @@ bootstrap, and exports the Astra-only figure in PNG, SVG, and PDF. Saved bootstr
 draws and confidence intervals are in `outputs/astra-api/`. `make astra-figures`
 rerenders it from committed tables. `make reproduce` also includes this supplement.
 The original Figures 1–4 and their tables remain separate and unchanged.
+
+To validate the exploratory archive and regenerate its flat request and session
+tables without fitting it:
+
+```bash
+make exploratory
+```
+
+This target is offline. The exploratory sessions remain separate because their
+protocols, completion status, and roles differ; the repository intentionally
+does not define a default pooled regression over them.
 
 The checked-in PNG, SVG, and PDF figures are generated directly by
 `analysis/figures.R` using the included Inter font. Running `make figures`
