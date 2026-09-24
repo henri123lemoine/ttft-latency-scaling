@@ -175,13 +175,13 @@ ends <- extrapolation[extrapolation$x == 10, ]
 end_text <- c(
   "Claude Sonnet 5, Aug 14 (in the post)" = "%.1f min (Sonnet, Aug 14)",
   "Claude Sonnet 5, Aug 13" = "%.1f min (Sonnet, Aug 13)",
-  "Claude Opus 5, Aug 13 (in the post)" = "%.1f min (Opus, Aug 13, in the post)",
+  "Claude Opus 5, Aug 13 (in the post)" = "%.1f min (Opus, Aug 13)",
   "Claude Opus 5, Aug 14" = "%.1f min (Opus, Aug 14)",
   "GPT-5.6 Sol (in the post)" = "%.1f min (Sol)"
 )
 ends$label <- sprintf(end_text[as.character(ends$name)], ends$minutes)
 sonnet_ends <- grepl("^Claude Sonnet", ends$name)
-ends$minutes[sonnet_ends] <- ends$minutes[sonnet_ends] + c(0.45, -0.45)
+ends$minutes[sonnet_ends] <- ends$minutes[sonnet_ends] + c(-0.45, 0.45)
 
 extrapolation_panel <- ggplot(extrapolation, aes(x = x, y = minutes, color = name, linetype = name, group = name)) +
   geom_line(linewidth = 1.05, lineend = "round") +
