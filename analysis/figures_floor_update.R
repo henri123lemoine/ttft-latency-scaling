@@ -44,8 +44,7 @@ fit_row <- function(model_name, label, date, fit) {
 }
 fits <- do.call(rbind, lapply(update$models, function(m) rbind(
   fit_row(m$model, "headline", m$headline$date, m$headline$fit),
-  fit_row(m$model, "exploratory", m$exploratory$date, m$exploratory$fit),
-  fit_row(m$model, "pooled", "both", m$pooled$fit)
+  fit_row(m$model, "exploratory", m$exploratory$date, m$exploratory$fit)
 )))
 
 evaluate <- function(coefficient, x_million) {
@@ -54,7 +53,7 @@ evaluate <- function(coefficient, x_million) {
 
 curve_rows <- function(model_name) {
   x_million <- seq(0.05, 0.9, length.out = 300)
-  do.call(rbind, lapply(c("headline", "exploratory", "pooled"), function(label) {
+  do.call(rbind, lapply(c("headline", "exploratory"), function(label) {
     coefficient <- fits[fits$model == model_name & fits$label == label, ]
     data.frame(label = label, date = coefficient$date, x_thousands = x_million * 1000, ttft_seconds = evaluate(coefficient, x_million))
   }))
@@ -66,9 +65,9 @@ session_panel <- function(model_name) {
   model_points <- points[points$model == model_name, ]
   model_floor <- floor_points[floor_points$model == model_name, ]
   curves <- curve_rows(model_name)
-  curve_colors <- c("2026-08-13" = orange, "2026-08-14" = blue, "both" = ink)
-  curve_widths <- c("2026-08-13" = 1.0, "2026-08-14" = 1.0, "both" = 1.25)
-  curve_types <- c("2026-08-13" = "solid", "2026-08-14" = "solid", "both" = "31")
+  curve_colors <- c("2026-08-13" = orange, "2026-08-14" = blue)
+  curve_widths <- c("2026-08-13" = 1.1, "2026-08-14" = 1.1)
+  curve_types <- c("2026-08-13" = "solid", "2026-08-14" = "solid")
   ggplot() +
     geom_point(data = model_points, aes(x = x * 1000, y = ttft, color = date), alpha = 0.3, size = 2.9, stroke = 0) +
     geom_line(data = curves, aes(x = x_thousands, y = ttft_seconds, color = date, linewidth = date, linetype = date), lineend = "round") +
@@ -85,18 +84,18 @@ session_panel <- function(model_name) {
 
 panel_figure(
   "figure_6_second_sessions",
-  "A second Opus session, same protocol, one day later:\nthe floor is 30% lower at long contexts and half as curved",
-  "Sonnet's two sessions land on the same floor. Opus's do not.",
+  "In a second session a day later, Claude Opus 5's floor curves\nupward again and Claude Sonnet 5's stays linear",
+  "Same protocol and context grid. Opus's floor is 30% lower at long contexts on Aug 14 and half as\ncurved; Sonnet's two floors coincide.",
   list(
     list(kind = "point", color = orange, label = "Aug 13 session"),
     list(kind = "point", color = blue, label = "Aug 14 session"),
-    list(kind = "line", color = ink, label = "Floor fit, both sessions pooled", lwd = 3, lty = "31")
+    list(kind = "line", color = body_ink, label = "Floor fit per session", lwd = 3)
   ),
   lapply(model_order, session_panel),
   ncol = 2,
   x_label = "Input context (thousand tokens)",
   y_header = "Time to first token (s)",
-  caption = "Faint dots: every request in each session. Solid dots and thin lines: each session's fastest request per length\nand its quadratic fit. Sonnet: Aug 14 is Epoch's headline session. Opus: Aug 13 is."
+  caption = "Faint dots: every request in each session. Solid dots: each session's fastest request per length. Lines: quadratic\nfit to those. Sonnet: Aug 14 is Epoch's headline session. Opus: Aug 13 is."
 )
 
 # ------------------------------------------- figure 7: curvature update ----
@@ -109,9 +108,7 @@ interval_rows <- rbind(
       data.frame(label = session_label("headline", ", in the post"), date = m$headline$date, estimate = m$headline$fit$gamma,
         low = m$headline$fit$gamma_ci95[[1]], high = m$headline$fit$gamma_ci95[[2]]),
       data.frame(label = session_label("exploratory", ", new"), date = m$exploratory$date, estimate = m$exploratory$fit$gamma,
-        low = m$exploratory$fit$gamma_ci95[[1]], high = m$exploratory$fit$gamma_ci95[[2]]),
-      data.frame(label = sprintf("%s, both sessions pooled", m$model), date = "both", estimate = m$pooled$fit$gamma,
-        low = m$pooled$fit$gamma_ci95[[1]], high = m$pooled$fit$gamma_ci95[[2]])
+        low = m$exploratory$fit$gamma_ci95[[1]], high = m$exploratory$fit$gamma_ci95[[2]])
     )
   })),
   do.call(rbind, lapply(names(reference), function(model_name) {
@@ -121,7 +118,7 @@ interval_rows <- rbind(
   }))
 )
 interval_rows$label <- factor(interval_rows$label, levels = rev(interval_rows$label))
-interval_colors <- c("2026-08-13" = orange, "2026-08-14" = blue, "both" = ink, "reference" = muted)
+interval_colors <- c("2026-08-13" = orange, "2026-08-14" = blue, "reference" = muted)
 
 curvature_panel <- ggplot(interval_rows, aes(y = label, color = date)) +
   geom_vline(xintercept = 0, color = body_ink, linewidth = 0.5) +
@@ -139,17 +136,16 @@ curvature_panel <- ggplot(interval_rows, aes(y = label, color = date)) +
 
 export_figure("figure_7_curvature_update", function() {
   grid.newpage()
-  text_grob("Opus's curvature replicates in the second session, at half the size", 0.08, 0.955, 15.5, face = "bold")
+  text_grob("Claude Opus 5 curves upward in both sessions; Claude Sonnet 5 in neither", 0.08, 0.955, 15.5, face = "bold")
   draw_legend(list(
     list(kind = "line", color = orange, label = "Aug 13 session", lwd = 3),
     list(kind = "line", color = blue, label = "Aug 14 session", lwd = 3),
-    list(kind = "line", color = ink, label = "Both pooled", lwd = 3),
     list(kind = "line", color = muted, label = "GPT reference, from the post", lwd = 3)
   ), 0.87)
   place(curvature_panel, 0.08, 0.30, 0.84, 0.53)
   text_grob("Quadratic coefficient of the floor fit (seconds per million tokens squared), 95% interval",
     0.08 + 0.84 * 0.6, 0.275, 11, color = body_ink, just = c("center", "top"))
-  draw_footer("Each interval is a quadratic fit to the fastest request at each of eight context lengths. Pooling takes the fastest\nrequest across both sessions, which under the floor argument is the better estimate of the serving curve.",
+  draw_footer("Each interval is a quadratic fit to the fastest request at each of eight context lengths. Opus's two sessions differ\nin level, slope, and curvature (p = 0.04 for the curvature), so they are not pooled.",
     caption_y = 0.135)
 }, width = 8.6, height = 6.6)
 
@@ -163,25 +159,29 @@ curve <- function(name, coefficient, linetype) {
   data.frame(name = name, linetype = linetype, x = x_million, minutes = evaluate(coefficient, x_million) / 60)
 }
 extrapolation <- rbind(
-  curve("Claude Sonnet 5, pooled", fits[fits$model == "Claude Sonnet 5" & fits$label == "pooled", ], "solid"),
-  curve("Claude Opus 5, Aug 13 (in the post)", fits[fits$model == "Claude Opus 5" & fits$label == "headline", ], "22"),
+  curve("Claude Sonnet 5, Aug 14 (in the post)", fits[fits$model == "Claude Sonnet 5" & fits$label == "headline", ], "solid"),
+  curve("Claude Sonnet 5, Aug 13", fits[fits$model == "Claude Sonnet 5" & fits$label == "exploratory", ], "31"),
+  curve("Claude Opus 5, Aug 13 (in the post)", fits[fits$model == "Claude Opus 5" & fits$label == "headline", ], "solid"),
   curve("Claude Opus 5, Aug 14", fits[fits$model == "Claude Opus 5" & fits$label == "exploratory", ], "31"),
-  curve("Claude Opus 5, pooled", fits[fits$model == "Claude Opus 5" & fits$label == "pooled", ], "solid"),
   curve("GPT-5.6 Sol (in the post)", sol_fit, "solid")
 )
 curve_names <- unique(extrapolation$name)
 extrapolation$name <- factor(extrapolation$name, levels = curve_names)
-curve_colors <- c(teal, blue, blue, blue, orange)
+curve_colors <- c(teal, teal, blue, blue, orange)
 names(curve_colors) <- curve_names
-curve_types <- c("solid", "22", "31", "solid", "solid")
+curve_types <- c("solid", "31", "solid", "31", "solid")
 names(curve_types) <- curve_names
 ends <- extrapolation[extrapolation$x == 10, ]
-ends$label <- sprintf("%.1f min", ends$minutes)
-ends$label[ends$name == "Claude Opus 5, Aug 13 (in the post)"] <- sprintf("%.1f min (Aug 13, in the post)", ends$minutes[ends$name == "Claude Opus 5, Aug 13 (in the post)"])
-ends$label[ends$name == "Claude Opus 5, Aug 14"] <- sprintf("%.1f min (Aug 14)", ends$minutes[ends$name == "Claude Opus 5, Aug 14"])
-ends$label[ends$name == "Claude Opus 5, pooled"] <- sprintf("%.1f min (pooled)", ends$minutes[ends$name == "Claude Opus 5, pooled"])
-ends$label[ends$name == "GPT-5.6 Sol (in the post)"] <- sprintf("%.1f min (Sol)", ends$minutes[ends$name == "GPT-5.6 Sol (in the post)"])
-ends$label[ends$name == "Claude Sonnet 5, pooled"] <- sprintf("%.1f min (Sonnet)", ends$minutes[ends$name == "Claude Sonnet 5, pooled"])
+end_text <- c(
+  "Claude Sonnet 5, Aug 14 (in the post)" = "%.1f min (Sonnet, Aug 14)",
+  "Claude Sonnet 5, Aug 13" = "%.1f min (Sonnet, Aug 13)",
+  "Claude Opus 5, Aug 13 (in the post)" = "%.1f min (Opus, Aug 13, in the post)",
+  "Claude Opus 5, Aug 14" = "%.1f min (Opus, Aug 14)",
+  "GPT-5.6 Sol (in the post)" = "%.1f min (Sol)"
+)
+ends$label <- sprintf(end_text[as.character(ends$name)], ends$minutes)
+sonnet_ends <- grepl("^Claude Sonnet", ends$name)
+ends$minutes[sonnet_ends] <- ends$minutes[sonnet_ends] + c(0.45, -0.45)
 
 extrapolation_panel <- ggplot(extrapolation, aes(x = x, y = minutes, color = name, linetype = name, group = name)) +
   geom_line(linewidth = 1.05, lineend = "round") +
@@ -196,13 +196,13 @@ extrapolation_panel <- ggplot(extrapolation, aes(x = x, y = minutes, color = nam
 
 export_figure("figure_8_extrapolation_update", function() {
   grid.newpage()
-  text_grob("Opus's extrapolated 10-million-token TTFT: 17.6 minutes from\nthe post's session, 6.6 minutes pooled over both", 0.08, 0.965, 15.5, face = "bold")
+  text_grob("Extrapolated to 10 million tokens, Claude Opus 5 lands between\n9 and 18 minutes depending on the session; Sonnet near 3", 0.08, 0.965, 15.5, face = "bold")
   draw_legend(list(
-    list(kind = "line", color = teal, label = "Sonnet 5, pooled"),
-    list(kind = "line", color = blue, label = "Opus 5, Aug 13", lty = "22"),
-    list(kind = "line", color = blue, label = "Opus 5, Aug 14", lty = "31"),
-    list(kind = "line", color = blue, label = "Opus 5, pooled"),
-    list(kind = "line", color = orange, label = "GPT-5.6 Sol")
+    list(kind = "line", color = teal, label = "Claude Sonnet 5"),
+    list(kind = "line", color = blue, label = "Claude Opus 5"),
+    list(kind = "line", color = orange, label = "GPT-5.6 Sol"),
+    list(kind = "line", color = body_ink, label = "Aug 13 or in the post"),
+    list(kind = "line", color = body_ink, label = "Aug 14", lty = "31")
   ), 0.868)
   text_grob("Time to first token (minutes)", 0.08, 0.815, 11, color = body_ink)
   place(extrapolation_panel, 0.08, 0.215, 0.84, 0.57)

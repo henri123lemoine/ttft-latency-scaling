@@ -7,8 +7,11 @@
 The archive (upstream commit 29763e4) contains one more complete 8-length,
 6-block session per Claude model collected with the same shared-prefix protocol
 as the headline sessions, a day apart. This script fits the floor of each
-session separately and of both sessions pooled, and writes
-outputs/floor/update.json for analysis/figures_floor_update.R.
+session separately, then tests whether the two sessions share a curvature
+(per-session intercept and slope, one quadratic term), and writes
+outputs/floor/update.json for analysis/figures_floor_update.R. Minima are not
+pooled across sessions: the sessions differ in level and slope, so the envelope
+of the two is not any one serving curve.
 
 Offline only. Run with `uv run analysis/floor_update.py`.
 """
@@ -102,6 +105,39 @@ def describe(rows: list[Observation]) -> dict:
     }
 
 
+def shared_curvature(head_rows: list[Observation], expl_rows: list[Observation]) -> dict:
+    x_head, y_head = per_length_min(head_rows)
+    x_expl, y_expl = per_length_min(expl_rows)
+    x = np.concatenate([x_head, x_expl])
+    y = np.concatenate([y_head, y_expl])
+    s = np.concatenate([np.zeros_like(x_head), np.ones_like(x_expl)])
+
+    def least_squares(design: np.ndarray) -> tuple[np.ndarray, float, int, np.ndarray]:
+        beta, *_ = np.linalg.lstsq(design, y, rcond=None)
+        residual = y - design @ beta
+        df = len(y) - design.shape[1]
+        covariance = (residual @ residual) / df * np.linalg.inv(design.T @ design)
+        return beta, float(residual @ residual), df, covariance
+
+    shared = np.column_stack([1 - s, s, (1 - s) * x, s * x, x**2])
+    beta, rss, df, covariance = least_squares(shared)
+    half_width = float(stats.t.ppf(0.975, df) * np.sqrt(covariance[4, 4]))
+    _, rss_linear, _, _ = least_squares(np.column_stack([1 - s, s, (1 - s) * x, s * x]))
+    f_zero = (rss_linear - rss) / (rss / df)
+    _, rss_separate, df_separate, _ = least_squares(
+        np.column_stack([1 - s, s, (1 - s) * x, s * x, (1 - s) * x**2, s * x**2])
+    )
+    f_differs = (rss - rss_separate) / (rss_separate / df_separate)
+    return {
+        "gamma": float(beta[4]),
+        "gamma_ci95": [float(beta[4] - half_width), float(beta[4] + half_width)],
+        "p_gamma_zero": float(stats.f.sf(f_zero, 1, df)),
+        "p_gamma_differs_by_session": float(stats.f.sf(f_differs, 1, df_separate)),
+        "headline": {"alpha": float(beta[0]), "beta": float(beta[2])},
+        "exploratory": {"alpha": float(beta[1]), "beta": float(beta[3])},
+    }
+
+
 def main() -> None:
     headline = read_headline()
     exploratory = read_exploratory()
@@ -119,7 +155,7 @@ def main() -> None:
                 "model": model,
                 "headline": {**HEADLINE_SESSIONS[model], **describe(head_rows)},
                 "exploratory": {**EXPLORATORY_SESSIONS[model], **describe(expl_rows)},
-                "pooled": describe(head_rows + expl_rows),
+                "shared_curvature": shared_curvature(head_rows, expl_rows),
             }
         )
     OUT.mkdir(parents=True, exist_ok=True)
@@ -130,26 +166,31 @@ def main() -> None:
         w = csv.writer(f)
         w.writerow(["model", "session", "date", "blocks", "floor_alpha", "floor_beta", "floor_gamma", "gamma_ci_low", "gamma_ci_high", "p_value", "ttft_10m_minutes"])
         for m in models:
-            for key in ["headline", "exploratory", "pooled"]:
+            for key in ["headline", "exploratory"]:
                 s = m[key]
                 fit = s["fit"]
                 w.writerow(
                     [
-                        m["model"], key, s.get("date", "both"), s["blocks"], fit["alpha"], fit["beta"], fit["gamma"],
+                        m["model"], key, s["date"], s["blocks"], fit["alpha"], fit["beta"], fit["gamma"],
                         *fit["gamma_ci95"], fit["p_value"], s["extrapolation"][-1]["ttft_seconds"] / 60,
                     ]
                 )
     for m in models:
         print(m["model"])
-        for key in ["headline", "exploratory", "pooled"]:
+        for key in ["headline", "exploratory"]:
             s = m[key]
             fit = s["fit"]
             ci = fit["gamma_ci95"]
             print(
-                f"  {key:12s} {s.get('date', 'both'):10s} γ={fit['gamma']:5.2f} [{ci[0]:5.2f}, {ci[1]:5.2f}]"
+                f"  {key:12s} {s['date']:10s} γ={fit['gamma']:5.2f} [{ci[0]:5.2f}, {ci[1]:5.2f}]"
                 f" p={fit['p_value']:.3f}  10M={s['extrapolation'][-1]['ttft_seconds'] / 60:5.1f} min"
                 f"  floor@0.9M={s['floor'][-1]['ttft']:5.2f}s"
             )
+        sc = m["shared_curvature"]
+        print(
+            f"  shared γ={sc['gamma']:5.2f} [{sc['gamma_ci95'][0]:5.2f}, {sc['gamma_ci95'][1]:5.2f}]"
+            f" p(γ=0)={sc['p_gamma_zero']:.4f}  p(γ differs by session)={sc['p_gamma_differs_by_session']:.2f}"
+        )
 
 
 if __name__ == "__main__":
