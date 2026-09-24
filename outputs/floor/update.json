@@ -983,6 +983,7 @@
     ],
     "p_gamma_zero": 0.6037874707920139,
     "p_gamma_differs_by_session": 0.9196339003978643,
+    "p_no_curvature_in_either_session": 0.8750789956468484,
     "headline": {
      "alpha": 0.37198735015131074,
      "beta": 11.762843322444239
@@ -1655,6 +1656,7 @@
     ],
     "p_gamma_zero": 0.00017594676970295698,
     "p_gamma_differs_by_session": 0.03607132564804866,
+    "p_no_curvature_in_either_session": 0.00012795813663946652,
     "headline": {
      "alpha": 1.0752617145078212,
      "beta": 14.87790697436849

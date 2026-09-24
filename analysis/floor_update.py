@@ -128,11 +128,13 @@ def shared_curvature(head_rows: list[Observation], expl_rows: list[Observation])
         np.column_stack([1 - s, s, (1 - s) * x, s * x, (1 - s) * x**2, s * x**2])
     )
     f_differs = (rss - rss_separate) / (rss_separate / df_separate)
+    f_joint = ((rss_linear - rss_separate) / 2) / (rss_separate / df_separate)
     return {
         "gamma": float(beta[4]),
         "gamma_ci95": [float(beta[4] - half_width), float(beta[4] + half_width)],
         "p_gamma_zero": float(stats.f.sf(f_zero, 1, df)),
         "p_gamma_differs_by_session": float(stats.f.sf(f_differs, 1, df_separate)),
+        "p_no_curvature_in_either_session": float(stats.f.sf(f_joint, 2, df_separate)),
         "headline": {"alpha": float(beta[0]), "beta": float(beta[2])},
         "exploratory": {"alpha": float(beta[1]), "beta": float(beta[3])},
     }
@@ -190,6 +192,7 @@ def main() -> None:
         print(
             f"  shared γ={sc['gamma']:5.2f} [{sc['gamma_ci95'][0]:5.2f}, {sc['gamma_ci95'][1]:5.2f}]"
             f" p(γ=0)={sc['p_gamma_zero']:.4f}  p(γ differs by session)={sc['p_gamma_differs_by_session']:.2f}"
+            f"  joint p(no curvature in either session)={sc['p_no_curvature_in_either_session']:.5f}"
         )
 
 
