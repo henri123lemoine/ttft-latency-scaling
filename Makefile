@@ -33,4 +33,6 @@ reproduce: results figures astra
 
 floor:
 	uv run analysis/floor.py
+	uv run analysis/floor_update.py
 	$(RSCRIPT) analysis/figures_floor.R
+	$(RSCRIPT) analysis/figures_floor_update.R
