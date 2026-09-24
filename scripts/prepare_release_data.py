@@ -34,6 +34,23 @@ REDACTED_FIELDS = {
     "ratelimit_remaining_tokens",
 }
 
+EXPLORATORY_REDACTED_FIELDS = {
+    "network_label",
+    "platform",
+    "hard_cost_limit_usd",
+}
+
+
+def load_exploratory_sessions(root: Path) -> dict[str, tuple[str, str]]:
+    """Load the explicitly reviewed exploratory-session allowlist."""
+
+    path = root / "config" / "exploratory_sessions.json"
+    configuration = json.loads(path.read_text())
+    return {
+        specification["session_id"]: ("exploratory", specification["api_model"])
+        for specification in configuration["sessions"]
+    }
+
 
 def main() -> None:
     parser = argparse.ArgumentParser()
@@ -44,15 +61,33 @@ def main() -> None:
         default=Path(__file__).resolve().parents[1],
         help="Reproducibility-repository root",
     )
-    parser.add_argument("--sessions", nargs="+", choices=list(SESSIONS),
-                        help="Release only these sessions; leave other logs untouched")
+    parser.add_argument(
+        "--sessions",
+        nargs="+",
+        help="Release only these allowlisted sessions; leave other logs untouched",
+    )
+    parser.add_argument(
+        "--exploratory-all",
+        action="store_true",
+        help="Release every session in config/exploratory_sessions.json",
+    )
     args = parser.parse_args()
 
-    schedule_dir = args.root / "data" / "schedules"
-    schedule_dir.mkdir(parents=True, exist_ok=True)
+    exploratory_sessions = load_exploratory_sessions(args.root)
+    sessions = {**SESSIONS, **exploratory_sessions}
+    if args.exploratory_all and args.sessions:
+        parser.error("--exploratory-all cannot be combined with --sessions")
+    selected = (
+        set(exploratory_sessions)
+        if args.exploratory_all
+        else set(args.sessions or SESSIONS)
+    )
+    unknown = selected.difference(sessions)
+    if unknown:
+        parser.error(f"unknown session IDs: {', '.join(sorted(unknown))}")
 
-    for session_id, (role, _model) in SESSIONS.items():
-        if args.sessions and session_id not in args.sessions:
+    for session_id, (role, _model) in sessions.items():
+        if session_id not in selected:
             continue
         source = args.source / f"{session_id}.jsonl"
         destination = args.root / "data" / "raw" / role / source.name
@@ -63,11 +98,15 @@ def main() -> None:
             for record in records:
                 for field in REDACTED_FIELDS:
                     record.pop(field, None)
-                if role == "astra-api":
-                    for field in ("network_label", "platform", "hard_cost_limit_usd"):
+                if role in {"astra-api", "exploratory"}:
+                    for field in EXPLORATORY_REDACTED_FIELDS:
                         record.pop(field, None)
                 handle.write(json.dumps(record, separators=(",", ":")) + "\n")
 
+        schedule_dir = args.root / "data" / "schedules"
+        if role == "exploratory":
+            schedule_dir /= "exploratory"
+        schedule_dir.mkdir(parents=True, exist_ok=True)
         measured = [
             record
             for record in records

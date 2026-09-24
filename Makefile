@@ -1,10 +1,17 @@
 PYTHON ?= python3
 RSCRIPT ?= Rscript
 
-.PHONY: floor validate results figures reproduce astra astra-results astra-figures
+.PHONY: floor validate results figures reproduce astra astra-results astra-figures exploratory exploratory-results
 
 validate:
 	$(PYTHON) scripts/validate_release.py
+	$(PYTHON) scripts/export_exploratory_data.py --check
+
+exploratory-results:
+	$(PYTHON) scripts/export_exploratory_data.py
+
+exploratory: exploratory-results
+	$(PYTHON) scripts/export_exploratory_data.py --check
 
 results: validate
 	$(RSCRIPT) analysis/reproduce.R
