@@ -1,0 +1,168 @@
+{
+  "session": "2026-10-06T133133.693691_0000-gpt-6-sol",
+  "model": {
+    "provider": "openai",
+    "model": "gpt-6-sol",
+    "reasoning_effort": "none",
+    "input_usd_per_mtok": 2,
+    "cache_read_usd_per_mtok": 0.2,
+    "cache_write_usd_per_mtok": 2.5,
+    "output_usd_per_mtok": 10,
+    "long_context_threshold": 272000,
+    "long_input_multiplier": 2,
+    "long_output_multiplier": 1.5
+  },
+  "benchmark": {
+    "max_output_tokens": 32,
+    "prompt": "Return exactly one short sentence summarizing the supplied text. Start immediately with the summary."
+  },
+  "lengths": [
+    50000,
+    175000,
+    250000,
+    275000,
+    550000,
+    850000
+  ],
+  "rows": [
+    {
+      "target": 50000,
+      "end": 214192,
+      "mode": "cached",
+      "report_mode": "shared_prefix_cached",
+      "counted": 50000,
+      "split": 9454,
+      "new_estimate": 47952,
+      "cache_estimate": 2048,
+      "shared_cache_prefix_requested_tokens": 2048,
+      "stable_prefix_sha256": "730485e7e542bd012d1a7de896a57ef9d4048173bb8dcdc412e0127ef1738836",
+      "prompt_sha256": "66156793004c6b23342f252b86f68ab32c78c9f680e78367e98b20d0b96be4b6"
+    },
+    {
+      "target": 175000,
+      "end": 750015,
+      "mode": "cached",
+      "report_mode": "shared_prefix_cached",
+      "counted": 175000,
+      "split": 9454,
+      "new_estimate": 172952,
+      "cache_estimate": 2048,
+      "shared_cache_prefix_requested_tokens": 2048,
+      "stable_prefix_sha256": "730485e7e542bd012d1a7de896a57ef9d4048173bb8dcdc412e0127ef1738836",
+      "prompt_sha256": "3281f54413b930c1547c1b52bda6e854f7de17efa93278b6bf4c756d8ba559b6"
+    },
+    {
+      "target": 250000,
+      "end": 1044865,
+      "mode": "cached",
+      "report_mode": "shared_prefix_cached",
+      "counted": 250000,
+      "split": 9454,
+      "new_estimate": 247952,
+      "cache_estimate": 2048,
+      "shared_cache_prefix_requested_tokens": 2048,
+      "stable_prefix_sha256": "730485e7e542bd012d1a7de896a57ef9d4048173bb8dcdc412e0127ef1738836",
+      "prompt_sha256": "4a12f9ac489fbb710d4e8f3ecb7200882b0aaf1d43987a9336ae4d68d7a3d547"
+    },
+    {
+      "target": 275000,
+      "end": 1142955,
+      "mode": "cached",
+      "report_mode": "shared_prefix_cached",
+      "counted": 275000,
+      "split": 9454,
+      "new_estimate": 272952,
+      "cache_estimate": 2048,
+      "shared_cache_prefix_requested_tokens": 2048,
+      "stable_prefix_sha256": "730485e7e542bd012d1a7de896a57ef9d4048173bb8dcdc412e0127ef1738836",
+      "prompt_sha256": "685403abe364f529c8320624fe814531afc497941c46f5d6900af9aadbc76770"
+    },
+    {
+      "target": 550000,
+      "end": 2270860,
+      "mode": "cached",
+      "report_mode": "shared_prefix_cached",
+      "counted": 550000,
+      "split": 9454,
+      "new_estimate": 547952,
+      "cache_estimate": 2048,
+      "shared_cache_prefix_requested_tokens": 2048,
+      "stable_prefix_sha256": "730485e7e542bd012d1a7de896a57ef9d4048173bb8dcdc412e0127ef1738836",
+      "prompt_sha256": "8a35609555d143be5b8984c0d40e4d8b9b1ea5964ef047695e3eb300bce0a684"
+    },
+    {
+      "target": 850000,
+      "end": 3507175,
+      "mode": "cached",
+      "report_mode": "shared_prefix_cached",
+      "counted": 850000,
+      "split": 9454,
+      "new_estimate": 847952,
+      "cache_estimate": 2048,
+      "shared_cache_prefix_requested_tokens": 2048,
+      "stable_prefix_sha256": "730485e7e542bd012d1a7de896a57ef9d4048173bb8dcdc412e0127ef1738836",
+      "prompt_sha256": "0e0a696994824d57d9ba1886156d26d55cd7ae02d265b68aed38f31cd37db9df"
+    }
+  ],
+  "schedules": [
+    [
+      850000,
+      550000,
+      175000,
+      250000,
+      50000,
+      275000
+    ],
+    [
+      850000,
+      250000,
+      275000,
+      50000,
+      175000,
+      550000
+    ],
+    [
+      275000,
+      850000,
+      250000,
+      550000,
+      50000,
+      175000
+    ],
+    [
+      250000,
+      50000,
+      175000,
+      850000,
+      550000,
+      275000
+    ],
+    [
+      250000,
+      550000,
+      275000,
+      175000,
+      850000,
+      50000
+    ]
+  ],
+  "min_start_interval_s": 4,
+  "budget_usd": 80.0,
+  "prior_pilot_cost_usd": 0.6939188,
+  "planned_blocks": 5,
+  "review_after_blocks": [
+    3,
+    4,
+    5
+  ],
+  "noise_warning": "relative IQR > .20 at >=2 lengths, or >=2 observations >2x own-length median",
+  "fixed_output": true,
+  "leading_nonce": true,
+  "prefix_tokens": 2048,
+  "cache_mode": "explicit",
+  "cache_ttl": "30m (provider default)",
+  "reasoning_effort": "none",
+  "collector_sha256": "d270f8b8a9a4fb976bfe8be91ac94aa345a40b8b19b942b2d66b0b8ed9864e0e",
+  "core_sha256": "f045eabf16ecab771c67f21e5ff131dee6bd30a7f462b5ae5f5262988702ff8f",
+  "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+}

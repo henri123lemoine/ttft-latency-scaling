@@ -1,7 +1,7 @@
 PYTHON ?= python3
 RSCRIPT ?= Rscript
 
-.PHONY: validate results figures reproduce astra astra-results astra-figures exploratory exploratory-results
+.PHONY: validate results figures reproduce astra astra-results astra-figures exploratory exploratory-results sol-api sol-api-results sol-api-figures sol-api-validate
 
 validate:
 	$(PYTHON) scripts/validate_release.py
@@ -30,3 +30,15 @@ astra: astra-results
 	$(RSCRIPT) analysis/figures.R --astra-api
 
 reproduce: results figures astra
+
+sol-api-results:
+	$(RSCRIPT) analysis/sol_api.R
+	$(RSCRIPT) analysis/sol_api_validate.R
+
+sol-api-figures:
+	$(RSCRIPT) analysis/sol_api_figures.R
+
+sol-api-validate:
+	$(PYTHON) scripts/validate_sol_api.py
+
+sol-api: sol-api-results sol-api-figures sol-api-validate

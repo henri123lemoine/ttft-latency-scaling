@@ -8,6 +8,13 @@ A separate [GPT-6 Astra API supplement](docs/astra-api.md) adds the September 9,
 2026 measurements and an Astra-only Student-t plot. It does not replace or pool
 with the original four-model results.
 
+A separate [GPT-6 Sol / GPT-6.1 Sol API supplement](docs/sol-api.md) adds 60
+October 6, 2026 measurements and a four-panel comparison with the already released
+GPT-5.6 Sol and GPT-6 Astra API data. Its offline analysis, bootstrap tables, exact
+collection manifests, checkpoint decisions, and neutral figure are included.
+Run `make sol-api` to reproduce it, or `make sol-api-figures` to rerender from the
+committed tables. Original headline fits and Figures 1–4 are unchanged.
+
 It supports two separate tasks:
 
 1. **Offline reproduction:** refit the released observations and regenerate all
