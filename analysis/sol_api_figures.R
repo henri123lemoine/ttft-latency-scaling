@@ -101,11 +101,10 @@ render <- function(methods,stem,single=FALSE,titled=FALSE) {
     height<-10.6
     body<-grid::grobTree(figure,vp=grid::viewport(x=.5,y=4.8/height,width=1,height=9.6/height))
     figure<-grid::grobTree(body,
-      grid::textGrob('GPT-6.1 Sol\u2019s TTFT scales more slowly than earlier Sol models',
+      grid::textGrob('GPT-6.1 Sol\u2019s TTFT scales more efficiently than earlier Sol models',
         x=.0475,y=1-.28/height,just=c('left','top'),
         gp=grid::gpar(fontsize=13.5,fontface='bold',col='#111827')),
-      grid::textGrob(paste0('Each dot is one request; curves show three quadratic-capable estimators and a fit to the\n',
-                            'minimum latency at each input length.'),
+      grid::textGrob('Each dot is one API request; lines are quadratic-capable fits.',
         x=.0475,y=1-.61/height,just=c('left','top'),
         gp=grid::gpar(fontsize=11,col='#556568',lineheight=1.25)))
   }
