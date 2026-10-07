@@ -504,7 +504,7 @@ def stream_one(
         payload = {
             "model": model["model"],
             "messages": messages,
-            "max_tokens": benchmark["max_output_tokens"],
+            "max_tokens": model.get("max_output_tokens", benchmark["max_output_tokens"]),
             "thinking": {"type": model.get("thinking_type", "disabled")},
             "stream": True,
         }
@@ -536,6 +536,7 @@ def stream_one(
         "output_tokens": None,
         "reasoning_tokens": None if model["provider"] == "openai" else 0,
         "thinking_blocks": 0,
+        "stop_reason": None,
         "requested_service_tier": "default" if model["provider"] == "openai" else None,
         "returned_service_tier": None,
         "error": None,
@@ -606,6 +607,7 @@ def stream_one(
                         result["output_preview"] += text
                 elif event_type == "message_delta":
                     _anthropic_usage(result, event.get("usage") or {})
+                    result["stop_reason"] = (event.get("delta") or {}).get("stop_reason")
                 elif event_type == "error":
                     result["error"] = str(event.get("error", event))
     except Exception as exc:

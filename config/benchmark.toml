@@ -70,3 +70,55 @@ output_usd_per_mtok = 25.00
 long_context_threshold = 0
 long_input_multiplier = 1.0
 long_output_multiplier = 1.0
+
+# Claude 5.5 replication (October 2026). Prices from Anthropic's model table, 2026-10-06.
+# Opus 5.5 rejects disabled thinking at every effort, so it runs adaptive at low effort;
+# first_content_ns (first content block, thinking or text) is the comparable prefill timer.
+# The larger output cap keeps a request that does think from ending before its "OK".
+[models.anthropic_opus_5_5]
+provider = "anthropic"
+model = "claude-opus-5-5"
+context_window = 1000000
+max_output = 128000
+max_output_tokens = 1024
+thinking_type = "adaptive"
+effort = "low"
+input_usd_per_mtok = 4.00
+cache_read_usd_per_mtok = 0.20
+cache_write_usd_per_mtok = 5.00
+output_usd_per_mtok = 20.00
+long_context_threshold = 0
+long_input_multiplier = 1.0
+long_output_multiplier = 1.0
+
+# Sonnet 5.5 rejects disabled thinking; between_tools is its thinking-off mode (effort <= high).
+[models.anthropic_sonnet_5_5]
+provider = "anthropic"
+model = "claude-sonnet-5-5"
+context_window = 1000000
+max_output = 128000
+thinking_type = "between_tools"
+effort = "low"
+input_usd_per_mtok = 2.00
+cache_read_usd_per_mtok = 0.20
+cache_write_usd_per_mtok = 2.50
+output_usd_per_mtok = 10.00
+long_context_threshold = 0
+long_input_multiplier = 1.0
+long_output_multiplier = 1.0
+
+# Haiku 5.5 accepts disabled thinking at effort high or below. Prompts over 100k tokens bill at 5x.
+[models.anthropic_haiku_5_5]
+provider = "anthropic"
+model = "claude-haiku-5-5"
+context_window = 1000000
+max_output = 128000
+thinking_type = "disabled"
+effort = "high"
+input_usd_per_mtok = 0.10
+cache_read_usd_per_mtok = 0.01
+cache_write_usd_per_mtok = 0.125
+output_usd_per_mtok = 0.50
+long_context_threshold = 100000
+long_input_multiplier = 5.0
+long_output_multiplier = 5.0
