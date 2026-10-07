@@ -178,3 +178,29 @@ PYTHONPATH=src python -m ttft_bench.cli run \
 ```
 
 Set `--max-cost-usd` per model to its share of the budget.
+
+## Runbook for the $100 run
+
+1. Python 3.12+ venv, `pip install -r requirements.lock`, `ANTHROPIC_API_KEY` in the shell
+   or `.env` (never in chat or git).
+2. `PYTHONPATH=src python -m ttft_bench.cli prepare-prompts --models anthropic_haiku_5_5,anthropic_sonnet_5_5,anthropic_opus_5_5 --lengths 50000,100000,175000,250000,375000,550000,750000,900000`
+   (count_tokens only, free).
+3. Preflight: one `run` per model with `--lengths 50000 --repetitions 2` and the
+   shared-prefix flags below. Check that each request is accepted, the output is exactly `OK`,
+   about 2,052 cache-read tokens are reported, `stop_reason` is `end_turn`, and Sonnet and Haiku
+   have zero thinking blocks. If a payload is rejected, stop and report; don't work around
+   it with paid requests.
+4. Paid runs, one after another, on the 8-length grid with
+   `--shared-cache-prefix-tokens 2048 --shared-cache-min-interval-seconds 4 --skip-warmup --fixed-output --leading-nonce`:
+   Haiku 5.5 `--repetitions 8 --max-cost-usd 14`, then Sonnet 5.5
+   `--repetitions 5 --max-cost-usd 34`, then Opus 5.5 `--repetitions 4 --max-cost-usd 52`.
+   Repeated 429s mean the org's input-token rate limit is too low for 900k requests;
+   report that rather than looping.
+5. Copy `live-results/*.jsonl` to `data/raw/claude-5.5/`. Floor fit per model, as in
+   `analysis/floor.py`: quadratic through the per-length minimum TTFT, curvature F-test
+   p, 95% CI on γ, and marginal seconds per 10k tokens at 50k and 1M. For Opus 5.5,
+   also fit `first_content_ns` and count requests with thinking blocks. Epoch's
+   Student-t fits too if R is available.
+6. Report per model: linear or quadratic, γ with CI, p, and the actual spend. Compare
+   with the post: Opus 5's floor γ was about 9.3 (Aug 13) and 4.3 (Aug 14), both
+   excluding zero; Sonnet 5's was about 0.4, with a CI that includes zero.
