@@ -77,11 +77,14 @@ Measured requests carry the shared 2,048-token cached prefix. Everything else is
 new input at full price. All numbers come from the collector's `estimate` with
 current list prices.
 
-| Blocks | Opus 5.5 | Sonnet 5.5 | Haiku 5.5 | Total (5.5) | + Opus 5 control | + Sonnet 5 control |
-|---:|---:|---:|---:|---:|---:|---:|
-| 6 | $75 | $38 | $9 | $122 | $94 | $38 |
-| **8** | **$100** | **$50** | **$12** | **$163** | **$125** | **$50** |
-| 14 (Epoch's Sonnet) | $176 | $88 | $21 | $285 | $220 | $88 |
+| Blocks | Opus 5.5 | Sonnet 5.5 | Haiku 5.5 | Total |
+|---:|---:|---:|---:|---:|
+| 1 | $12.6 | $6.3 | $1.5 | $20 |
+| 6 | $75 | $38 | $9 | $122 |
+| 8 | $100 | $50 | $12 | $163 |
+| 14 (Epoch's Sonnet) | $176 | $88 | $21 | $285 |
+
+Same-day Claude 5 controls were considered and dropped: too expensive for what they add.
 
 Haiku's prompts over 100k tokens bill at 5x ($0.50/M), which is most of its cost.
 Sizing calls are free, and a two-request preflight per model costs under $0.25.
@@ -125,11 +128,34 @@ fleet. Running three collector processes in parallel should cut wall time from r
 Opus session, the slowest). Within a model,
 requests stay sequential as Epoch's were.
 
-**Skip the Claude 5 controls if the budget is tight.** They're the only way to tell
-"5.5 differs from 5" apart from "today's load differs from August's". The floor fit
-is less sensitive to load than Epoch's fits, though, and the post's own Aug 13 vs 14
-check showed Opus 5's curvature held across days. Running Opus 5 at 6 blocks ($94)
-is a middle ground.
+## Within $100
+
+Budget-limited designs, simulated against two noise levels (Opus 5's Aug 13 session,
+which was noisy, and Sonnet 5's, which was clean) and three true curvatures. Cells
+are power to reject linear at p < 0.05 and the median 95% half-width on γ
+(`analysis/design_power.py` approach, 3,000 runs each; optimistic in absolute terms).
+
+| Blocks (Epoch grid) | Opus noise, γ 9.3 | Opus noise, γ 4.3 | Opus noise, γ 0 | Sonnet noise, γ 4.3 | Sonnet noise, γ 0 |
+|---:|---|---|---|---|---|
+| 3 | 0.67, ±6.4 | 0.31, ±6.2 | 0.05, ±6.3 | 0.90, ±2.1 | 0.05, ±2.2 |
+| 4 | 0.85, ±4.7 | 0.46, ±4.6 | 0.05, ±4.7 | 0.97, ±1.7 | 0.04, ±1.7 |
+| 5 | 0.94, ±3.8 | 0.60, ±3.8 | 0.05, ±3.8 | 0.99, ±1.5 | 0.05, ±1.5 |
+| 6 | 0.97, ±3.2 | 0.70, ±3.1 | 0.06, ±3.2 | 1.00, ±1.4 | 0.04, ±1.4 |
+
+γ 9.3 and 4.3 are Opus 5's floor curvature on Aug 13 and 14. Six or five lengths at
+matched cost were no better: about even under Opus noise, worse under Sonnet noise.
+
+Plan for $100, run in this order so later spending can react to earlier noise:
+
+1. Preflight, all three models (under $1).
+2. Haiku 5.5, 8 blocks ($12).
+3. Sonnet 5.5, 5 blocks ($32).
+4. Opus 5.5, 4 blocks ($50), the most expensive and the noisiest last time.
+
+That leaves about $5 for billed retries. If a 5.5 model is as clean as Sonnet 5, 4–5
+blocks detect even Opus-5-Aug-14-sized curvature almost every time. If Opus 5.5 is
+as noisy as Opus 5 was, 4 blocks usually (85%) tell "Opus-5-like" (γ around 9)
+from linear, but a γ around 4 only about half the time; the CI will say which case it is.
 
 ## Recommended run
 
@@ -137,17 +163,18 @@ Preflight first (under $1): `prepare-prompts` for the three models, then a
 two-request session per model at 50k to confirm each payload is accepted, the output
 is exactly `OK`, the cache hits, and the stop reason is `end_turn`.
 
-Then 8 blocks per 5.5 model, in parallel, on Epoch's grid:
+Then the blocks above per model on Epoch's grid, in the order above (8 each if the
+budget allows, and then the three can run in parallel):
 
 ```bash
 PYTHONPATH=src python -m ttft_bench.cli run \
   --models anthropic_opus_5_5 \
   --lengths 50000,100000,175000,250000,375000,550000,750000,900000 \
-  --repetitions 8 --shared-cache-prefix-tokens 2048 \
+  --repetitions 4 --shared-cache-prefix-tokens 2048 \
   --shared-cache-min-interval-seconds 4 \
   --skip-warmup --fixed-output --leading-nonce \
   --label opus-5-5-shared-prefix --network-label cloud \
-  --max-cost-usd 115
+  --max-cost-usd 52
 ```
 
-That's about $163 for the 5.5 models, or about $338 with 8-block Claude 5 controls.
+Set `--max-cost-usd` per model to its share of the budget.
