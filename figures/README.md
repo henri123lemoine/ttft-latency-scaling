@@ -24,3 +24,11 @@ It follows the same neutral styling and uses no additional assets. Run
 `make astra` to refit and render, or `make astra-figures` to render from the
 committed tables. See [`docs/astra-api.md`](../docs/astra-api.md) for provenance
 and the treatment of the interrupted initial session and excluded setup requests.
+
+## Sol API comparison supplement
+
+`sol-api/four_model_api_robustness_with_minimum_floor_2x2_titled.{png,svg,pdf}`
+is a separate API-only 114-observation comparison, not a replacement for Figure 1.
+See [scope and reproduction](../docs/sol-api.md); regenerate with
+`make sol-api-figures`. PNG is 240 dpi. SVG and PDF retain vector geometry.
+No organizational logo, branded footer, or private website assets are embedded.

@@ -1,0 +1,32 @@
+<p>Draft follow-up to <a href="https://henrilemoine.com/blog/ttft-floor/">Contra Epoch on Opus TTFT Scaling</a>. I reran Epoch's shared-prefix protocol on Claude Haiku 5.5, Sonnet 5.5 and Opus 5.5 on October 7: time to first token at eight context lengths from 50k to 900k tokens, a shared 2k cached prefix, every length once per pass, thinking off. Haiku got 8 passes in one session. Sonnet got 10 and Opus 9, each split over two sessions about three hours apart. The total was $188. All 216 requests succeeded, and none produced a thinking block.</p>
+
+<p>The fits are the same two as in the post: Epoch's Student-t fit through every request, and a quadratic through the fastest request at each length.</p>
+
+{{figure_1_claude_5_5_with_floor}}
+
+<p>Haiku 5.5 curves upward under both fits. Its Student-t γ is 14.4, with quadratic preferred over linear by 68 AICc points, and its floor γ is 17.4 (95% interval 2.8 to 32.1, p = 0.03). γ is the quadratic coefficient in seconds per (million tokens)². For scale, Opus 5's floor γ was 9.3 and 4.3 in its two sessions.</p>
+
+<p>Sonnet 5.5 and Opus 5.5 are not settled. Epoch's criterion picks linear for both, narrowly (by 1.5 AICc points each), with Student-t γ of 3.9 and 11.7. Their floor fits are 2 to 3 times below the typical request at 900k tokens and too ragged to give a curvature: Sonnet's floor γ is −5.7 (−46 to 34) and Opus's is 8.3 (−11 to 28).</p>
+
+{{figure_2_claude_5_5_curvature}}
+
+<p>The raggedness comes from requests that returned far faster than the others at the same length. One 900k-token Sonnet 5.5 request took 5.4 s when the other nine took 14 to 28 s. One 900k Opus 5.5 request took 9.4 s against a median of 28 s. Counting requests under 60% of the median for their length, there are 2 of 64 for Haiku, 5 of 80 for Sonnet and 10 of 72 for Opus. Each reported the same 2k cache read as every other request. None of Epoch's Claude 5 or GPT-5.6 sessions has a single request like that.</p>
+
+<p>Under the post's premise, that noise only ever slows a request down, those fast requests are the best view of the serving curve, and the bulk of requests is the noise. Doubling the passes for Sonnet and Opus fits that reading in one respect: the fast requests turned up at more lengths, and the floor dropped further below the bulk. But at nine or ten passes they still set the floor at some lengths and not at others, so the floor fit is drawn through a mix. The alternative is that the fast requests took a different path (other hardware, or cache reuse that isn't reported), in which case there are two curves and the floor is the faster one, sparsely sampled. This data cannot tell those apart.</p>
+
+{{figure_3_claude_5_5_extrapolation}}
+
+<p>Extrapolations follow the same pattern as the post, with the caveat that only Haiku's floor is well enough determined to extrapolate.</p>
+
+<h2>Conclusions</h2>
+
+<p>Weakly held:</p>
+
+<ul>
+<li>Haiku 5.5's TTFT is quadratic in context length, with curvature at least as large as Opus 5's.</li>
+<li>Sonnet 5.5 is consistent with linear under Epoch's fit, with a steeper slope than Sonnet 5 (19 against 12 seconds per million tokens). Its floor curvature is undetermined.</li>
+<li>Opus 5.5 is undetermined after 9 passes, under both methods. Its requests are noisier than Opus 5's and its median at 900k tokens is 28 s, against 21 s and 16 s in Opus 5's two sessions.</li>
+<li>The floor method needs many more passes on the 5.5 models than it did on Claude 5, because the fastest requests are rare: roughly 1 in 16 for Sonnet 5.5 and 1 in 7 for Opus 5.5.</li>
+</ul>
+
+<p>Data, fits and figure code: <a href="https://github.com/henri123lemoine/ttft-latency-scaling/pull/1">my fork</a> (<code>data/raw/claude-5.5/</code>, <code>analysis/claude_5_5.py</code>, <code>analysis/claude_5_5.R</code>, <code>analysis/figures_claude_5_5.R</code>). Collected with Epoch's collector from <a href="https://github.com/epoch-research/ttft-latency-scaling">epoch-research/ttft-latency-scaling</a> (MIT). A model's two sessions are pooled, with per-session floors in <code>outputs/claude-5.5/fits.json</code>. Opus 5.5 cannot disable thinking, so it ran with adaptive thinking at low effort; Sonnet 5.5 used its <code>between_tools</code> setting.</p>

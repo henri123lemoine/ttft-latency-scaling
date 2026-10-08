@@ -1,0 +1,134 @@
+[
+  {
+    "mode": "cached",
+    "target": 50000,
+    "counted": 50000,
+    "end": 214186,
+    "split": 171856,
+    "new_estimate": 10000,
+    "cache_estimate": 40000,
+    "prompt_sha256": "1741d0b798537ca5afbae52301f7e3e919299242066dd848f6cce181b0ebed6a",
+    "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+  },
+  {
+    "mode": "uncached",
+    "target": 50000,
+    "counted": 50000,
+    "end": 214188,
+    "split": 0,
+    "new_estimate": 50000,
+    "cache_estimate": 0,
+    "prompt_sha256": "3a9a41921c09bcd64a9e5ea20fc0f38c2c2d540bc1e60690a4e5c30bfaed7d83",
+    "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+  },
+  {
+    "mode": "cached",
+    "target": 175000,
+    "counted": 175000,
+    "end": 750012,
+    "split": 706395,
+    "new_estimate": 10000,
+    "cache_estimate": 165000,
+    "prompt_sha256": "452a5a089b118aa5da4c5638fd5cda7b1aecb4790281a06d122214ca7bcc2a6b",
+    "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+  },
+  {
+    "mode": "uncached",
+    "target": 175000,
+    "counted": 175000,
+    "end": 750015,
+    "split": 0,
+    "new_estimate": 175000,
+    "cache_estimate": 0,
+    "prompt_sha256": "4814536f7ae13ae478b40397b87f5ca5f525c6235b41e8d07a059bff33c9ce0d",
+    "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+  },
+  {
+    "mode": "cached",
+    "target": 250000,
+    "counted": 250000,
+    "end": 1044865,
+    "split": 1005602,
+    "new_estimate": 10000,
+    "cache_estimate": 240000,
+    "prompt_sha256": "817927081eea71aa1613ac1d4fe7b78bec111d2d25d5618613763e45c15a2c14",
+    "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+  },
+  {
+    "mode": "uncached",
+    "target": 250000,
+    "counted": 250000,
+    "end": 1044865,
+    "split": 0,
+    "new_estimate": 250000,
+    "cache_estimate": 0,
+    "prompt_sha256": "3709a4d024c09ce5a3be6e5c56c49ee2d3c7d79759658c1c153ee4908dc8d579",
+    "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+  },
+  {
+    "mode": "cached",
+    "target": 275000,
+    "counted": 274999,
+    "end": 1142947,
+    "split": 1106287,
+    "new_estimate": 10000,
+    "cache_estimate": 264999,
+    "prompt_sha256": "8c8389d428f2bf2e3513209e472f1fa06206799cbd657f42d1272f6dcadaa415",
+    "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+  },
+  {
+    "mode": "uncached",
+    "target": 275000,
+    "counted": 275000,
+    "end": 1142955,
+    "split": 0,
+    "new_estimate": 275000,
+    "cache_estimate": 0,
+    "prompt_sha256": "52cb32c022848da343aa15984a1cfc86001b00aee7b7146cf85a5cfe02c204d4",
+    "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+  },
+  {
+    "mode": "cached",
+    "target": 550000,
+    "counted": 550000,
+    "end": 2270860,
+    "split": 2228277,
+    "new_estimate": 10000,
+    "cache_estimate": 540000,
+    "prompt_sha256": "a398ccc285c462a5e2969ffd0897957436c78d004fe2886644d04568559b5f58",
+    "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+  },
+  {
+    "mode": "uncached",
+    "target": 550000,
+    "counted": 550000,
+    "end": 2270860,
+    "split": 0,
+    "new_estimate": 550000,
+    "cache_estimate": 0,
+    "prompt_sha256": "bf78a66d99e1107fe2d733d3632f4c768eb93af98a9ceda9f7fb033e85d0269f",
+    "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+  },
+  {
+    "mode": "cached",
+    "target": 850000,
+    "counted": 849999,
+    "end": 3507164,
+    "split": 3466803,
+    "new_estimate": 10000,
+    "cache_estimate": 839999,
+    "prompt_sha256": "b2aebd875a2f03a5d92d313499a3b53b7a1b2d79c6276c3c9328b1e86c1e6ac6",
+    "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+  },
+  {
+    "mode": "uncached",
+    "target": 850000,
+    "counted": 850000,
+    "end": 3507175,
+    "split": 0,
+    "new_estimate": 850000,
+    "cache_estimate": 0,
+    "prompt_sha256": "830f26a35fcaf8cbfc723464b59f7aec25841f062f4be677f6b740e97002803b",
+    "corpus_sha256": "075768889cfef63bcbb967fa0204b6048201fdfe896124915f75e8dadc8b9e75"
+  }
+]

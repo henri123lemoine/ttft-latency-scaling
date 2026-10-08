@@ -40,3 +40,15 @@ values, although those remain in the sanitized JSONL for protocol audit. The
 archive contains direct API observations only. It does not contain API keys,
 authorization headers, full serialized request bodies, subscription-account
 records, or private website source.
+
+## October 6 Sol API supplement
+
+`raw/sol-api/20261006-sol-shared.jsonl` was recorded with an allowlisted result
+schema that omits provider request/response IDs, raw error bodies, authorization
+headers, and account rate-limit headers. No additional raw-log redaction was
+required. It includes all 60 measured requests, both prefix-setup requests, cost
+reservations, session manifests, and checkpoint dispersion summaries. The prior
+reasoning pilot contributes only a historical ledger amount, not observations.
+No subscription account state or private website assets are included. Credential
+loader paths are omitted from the historical source excerpts. Manifest source
+hashes identify the original implementation, not the portable release files.
