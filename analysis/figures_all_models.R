@@ -68,6 +68,29 @@ panel_order <- unique(observations$panel)
 
 # ---------------------------------------------------------------- fits ------
 
+# Least squares on alpha + beta x + gamma x^2 with beta >= 0 and gamma >= 0: TTFT cannot
+# fall, or grow ever more slowly, with context. With two bounds the optimum is the best
+# feasible fit among the four ways of pinning them.
+constrained_quadratic <- function(x, y) {
+  candidates <- list(
+    list(formula = y ~ x + I(x^2), bound = ""),
+    list(formula = y ~ x, bound = "curvature"),
+    list(formula = y ~ I(x^2), bound = "slope"),
+    list(formula = y ~ 1, bound = "slope and curvature")
+  )
+  best <- NULL
+  for (candidate in candidates) {
+    model <- lm(candidate$formula, data.frame(x = x, y = y))
+    coefficient <- c(alpha = unname(coef(model)[1]), beta = 0, gamma = 0)
+    if ("x" %in% names(coef(model))) coefficient[["beta"]] <- coef(model)[["x"]]
+    if ("I(x^2)" %in% names(coef(model))) coefficient[["gamma"]] <- coef(model)[["I(x^2)"]]
+    if (coefficient[["beta"]] < 0 || coefficient[["gamma"]] < 0) next
+    rss <- sum(resid(model)^2)
+    if (is.null(best) || rss < best$rss) best <- list(coefficient = coefficient, rss = rss, bound = candidate$bound)
+  }
+  best
+}
+
 fit_panel <- function(panel) {
   data <- observations[observations$panel == panel, ]
   data$block <- factor(data$block)
@@ -76,6 +99,7 @@ fit_panel <- function(panel) {
   floor <- aggregate(y ~ x, data, min)
   floor_model <- lm(y ~ x + I(x^2), floor)
   interval <- confint(floor_model)["I(x^2)", ]
+  constrained <- constrained_quadratic(floor$x, floor$y)
   list(
     points = data, floor = floor,
     summary = data.frame(
@@ -84,9 +108,12 @@ fit_panel <- function(panel) {
       student_gamma = unname(student$beta["I(x^2)"]),
       student_delta_aicc = linear$aicc - student$aicc,
       student_linear_alpha = unname(linear$beta["(Intercept)"]), student_linear_beta = unname(linear$beta["x"]),
-      floor_alpha = unname(coef(floor_model)[1]), floor_beta = unname(coef(floor_model)[2]),
-      floor_gamma = unname(coef(floor_model)[3]), floor_gamma_low = interval[[1]], floor_gamma_high = interval[[2]],
-      floor_p = summary(floor_model)$coefficients["I(x^2)", "Pr(>|t|)"]
+      floor_alpha = constrained$coefficient[["alpha"]], floor_beta = constrained$coefficient[["beta"]],
+      floor_gamma = constrained$coefficient[["gamma"]], floor_bound = constrained$bound,
+      unconstrained_floor_alpha = unname(coef(floor_model)[1]), unconstrained_floor_beta = unname(coef(floor_model)[2]),
+      unconstrained_floor_gamma = unname(coef(floor_model)[3]),
+      unconstrained_floor_gamma_low = interval[[1]], unconstrained_floor_gamma_high = interval[[2]],
+      unconstrained_floor_p = summary(floor_model)$coefficients["I(x^2)", "Pr(>|t|)"]
     )
   )
 }
@@ -107,8 +134,12 @@ make_panel <- function(panel) {
     data.frame(method = "Floor fit", x = x, y = s$floor_alpha + s$floor_beta * x + s$floor_gamma * x^2)
   )
   curves$method <- factor(curves$method, levels = method_style$method)
-  note <- sprintf("%d passes. Curvature: %.1f Student-t,\n%.1f floor (%.1f to %.1f)", s$passes, s$student_gamma,
-    s$floor_gamma, s$floor_gamma_low, s$floor_gamma_high)
+  floor_note <- if (nzchar(s$floor_bound)) {
+    sprintf("%.1f floor (%s held at 0)", s$floor_gamma, s$floor_bound)
+  } else {
+    sprintf("%.1f floor (%.1f to %.1f)", s$floor_gamma, s$unconstrained_floor_gamma_low, s$unconstrained_floor_gamma_high)
+  }
+  note <- sprintf("%d passes. Curvature: %.1f Student-t,\n%s", s$passes, s$student_gamma, floor_note)
   ggplot() +
     geom_point(data = f$points, aes(x = x * 1000, y = y), color = scales::alpha(dot, 0.55), size = 2.6, stroke = 0) +
     geom_line(data = curves, aes(x = x * 1000, y = y, color = method, linewidth = method), lineend = "round") +
@@ -129,7 +160,7 @@ nrow <- ceiling(length(panel_order) / ncol)
 export_figure("figure_all_models_with_floor", function() {
   grid.newpage()
   text_grob("Time to first token against context length, every model measured so far", 0.05, 0.982, 17, face = "bold")
-  text_grob("Same shared-prefix protocol throughout. Curvature is the quadratic coefficient in seconds per million tokens squared;\nthe floor fit's 95% interval is in brackets.",
+  text_grob("Same shared-prefix protocol throughout. Curvature is the quadratic coefficient in seconds per million tokens squared.\nThe floor fit may not slope or bend downward; its 95% interval is in brackets where neither limit binds.",
     0.05, 0.958, 11.5, color = muted)
   draw_legend(list(
     list(kind = "line", color = teal, label = "Epoch's Student-t fit"),
@@ -159,8 +190,8 @@ export_figure("figure_all_models_with_floor", function() {
 }, width = 12.6, height = 15.4)
 
 # ------------------------------------------------------- extrapolation ------
-# Epoch's fit is the Student-t degree its AICc prefers; the floor fit is always
-# quadratic. A floor fit that turns negative before 10 million tokens is not drawn.
+# Epoch's fit is the Student-t degree its AICc prefers; the floor fit is the
+# constrained quadratic, drawn dashed where its curvature is held at zero.
 
 family_colors <- c(
   "GPT-5.6 Terra" = magenta, "GPT-5.6 Sol" = orange, "GPT-6 Astra" = "#a03010", "GPT-6 Sol" = "#c89000",
@@ -178,8 +209,9 @@ extrapolation_rows <- function(source) do.call(rbind, lapply(panel_order, functi
   } else {
     s$student_linear_alpha + s$student_linear_beta * x_million
   }
-  if (any(seconds < 0)) return(NULL)
-  degree <- if (source == "floor" || s$student_delta_aicc > 0) "quadratic" else "linear"
+  degree <- if (source == "floor") {
+    if (s$floor_gamma > 0) "quadratic" else "linear"
+  } else if (s$student_delta_aicc > 0) "quadratic" else "linear"
   data.frame(panel = panel, x = x_million, minutes = seconds / 60, degree = degree)
 }))
 
@@ -211,7 +243,7 @@ extrapolation_panel <- function(source, y_max = 30) {
 export_figure("figure_all_models_extrapolation", function() {
   grid.newpage()
   text_grob("Extrapolated to 10 million tokens, every model measured so far", 0.08, 0.98, 15.5, face = "bold")
-  text_grob("Top: Epoch's Student-t fit, linear or quadratic as its AICc prefers. Bottom: quadratic floor fit.",
+  text_grob("Top: Epoch's Student-t fit. Bottom: floor fit, which may not slope or bend downward.",
     0.08, 0.955, 11.5, color = muted)
   draw_legend(list(
     list(kind = "line", color = body_ink, label = "Quadratic fit"),
@@ -222,7 +254,7 @@ export_figure("figure_all_models_extrapolation", function() {
   text_grob("Floor fit: time to first token (minutes)", 0.08, 0.495, 11, color = body_ink)
   place(extrapolation_panel("floor"), 0.08, 0.12, 0.84, 0.36)
   text_grob("Input context (million tokens)", 0.08 + 0.84 * 0.33, 0.108, 11, color = body_ink, just = c("center", "top"))
-  text_grob("Measured data end below 1 million tokens; beyond that, these are stress-test extrapolations, not forecasts.\nClaude Sonnet 5.5's floor fit bends downward and is not drawn. Claude Opus 5.5's floor curvature is\nundetermined (95% interval -11 to 28).",
+  text_grob("Measured data end below 1 million tokens; beyond that, these are stress-test extrapolations, not forecasts.\nClaude Sonnet 5.5's floor would bend downward, so its curvature is held at zero. Claude Opus 5.5's floor\ncurvature is undetermined (95% interval -11 to 28).",
     0.08, 0.088, 10, color = muted)
   grid.lines(x = unit(c(0.08, 0.92), "npc"), y = unit(c(0.035, 0.035), "npc"), gp = gpar(col = grid_line, lwd = 1))
   text_grob("GPT and Claude 5 data: Epoch AI (CC-BY). Claude 5.5 data: own sessions. Fits recomputed.", 0.08, 0.026, 9.5, color = muted, just = c("left", "top"))
@@ -233,5 +265,5 @@ extrapolated <- rbind(cbind(source = "epoch", extrapolation_rows("epoch")), cbin
 write.csv(extrapolated[extrapolated$x == 10, c("source", "panel", "degree", "minutes")],
   file.path(output_dir, "all_models_ttft_at_10m.csv"), row.names = FALSE)
 
-print(format(summary_table[, c("panel", "passes", "student_gamma", "student_delta_aicc", "floor_gamma",
-  "floor_gamma_low", "floor_gamma_high", "floor_p")], digits = 3), row.names = FALSE)
+print(format(summary_table[, c("panel", "passes", "student_gamma", "student_delta_aicc", "floor_beta", "floor_gamma",
+  "floor_bound", "unconstrained_floor_gamma")], digits = 3), row.names = FALSE)

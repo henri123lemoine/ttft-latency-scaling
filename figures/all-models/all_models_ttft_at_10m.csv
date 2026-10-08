@@ -20,5 +20,6 @@
 "floor","Claude Sonnet 5, Aug 13","quadratic",2.86118471891777
 "floor","Claude Opus 5, Aug 13","quadratic",17.5904569350212
 "floor","Claude Opus 5, Aug 14","quadratic",8.86265922812845
-"floor","Claude Haiku 5.5","quadratic",28.4622410881411
+"floor","Claude Haiku 5.5","quadratic",23.2802802777882
+"floor","Claude Sonnet 5.5","linear",1.50413583851111
 "floor","Claude Opus 5.5","quadratic",14.1472698731291
