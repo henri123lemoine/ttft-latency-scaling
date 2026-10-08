@@ -58,6 +58,25 @@ long_context_threshold = 272000
 long_input_multiplier = 2.0
 long_output_multiplier = 1.5
 
+# The same model through OpenRouter, pinned to OpenAI as the upstream provider. Prompts are
+# sized with OpenAI's own token counter. Prices match OpenRouter's model listing, 2026-10-08.
+[models.openrouter_luna]
+provider = "openai"
+gateway = "openrouter"
+gateway_model = "openai/gpt-6-luna"
+gateway_provider = "openai"
+model = "gpt-6-luna"
+context_window = 1050000
+max_input_tokens = 922000
+max_output = 128000
+input_usd_per_mtok = 0.10
+cache_read_usd_per_mtok = 0.01
+cache_write_usd_per_mtok = 0.125
+output_usd_per_mtok = 0.50
+long_context_threshold = 272000
+long_input_multiplier = 2.0
+long_output_multiplier = 1.5
+
 [models.anthropic_sonnet]
 provider = "anthropic"
 model = "claude-sonnet-5"

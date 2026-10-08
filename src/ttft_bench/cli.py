@@ -113,17 +113,23 @@ def read_corpus(config: dict[str, Any]) -> tuple[str, str]:
 # Provider calls --------------------------------------------------------------
 
 
-def provider_client(model: dict[str, Any], timeout: float) -> httpx.Client:
-    if model["provider"] == "openai":
-        key = os.environ.get("OPENAI_API_KEY")
+def provider_client(model: dict[str, Any], timeout: float, direct: bool = False) -> httpx.Client:
+    if model.get("gateway") == "openrouter" and not direct:
+        variable = "OPENROUTER_API_KEY"
+        key = os.environ.get(variable)
+        headers = {"Authorization": f"Bearer {key}"}
+        base_url = "https://openrouter.ai/api"
+    elif model["provider"] == "openai":
+        variable = "OPENAI_API_KEY"
+        key = os.environ.get(variable)
         headers = {"Authorization": f"Bearer {key}"}
         base_url = "https://api.openai.com"
     else:
-        key = os.environ.get("ANTHROPIC_API_KEY")
+        variable = "ANTHROPIC_API_KEY"
+        key = os.environ.get(variable)
         headers = {"x-api-key": key or "", "anthropic-version": "2023-06-01"}
         base_url = "https://api.anthropic.com"
     if not key:
-        variable = "OPENAI_API_KEY" if model["provider"] == "openai" else "ANTHROPIC_API_KEY"
         raise ValueError(f"{variable} is missing from .env")
     return httpx.Client(
         base_url=base_url,
@@ -131,6 +137,15 @@ def provider_client(model: dict[str, Any], timeout: float) -> httpx.Client:
         timeout=httpx.Timeout(timeout, connect=30),
         limits=httpx.Limits(max_connections=1, max_keepalive_connections=1),
     )
+
+
+_COUNTING_CLIENTS: dict[str, httpx.Client] = {}
+
+
+def direct_counting_client(model: dict[str, Any]) -> httpx.Client:
+    if model["model"] not in _COUNTING_CLIENTS:
+        _COUNTING_CLIENTS[model["model"]] = provider_client(model, 900.0, direct=True)
+    return _COUNTING_CLIENTS[model["model"]]
 
 
 def blocks(model: dict[str, Any], stable: str, suffix: str, cached: bool) -> list[dict]:
@@ -167,6 +182,9 @@ def count_tokens(
             "input": blocks(model, stable, suffix, cached),
             "reasoning": {"effort": model.get("reasoning_effort", "none")},
         }
+        if model.get("gateway"):
+            # Gateways have no token-counting endpoint; size prompts against the provider.
+            client = direct_counting_client(model)
         response = client.post("/v1/responses/input_tokens", json=payload)
     else:
         payload = {
@@ -499,6 +517,9 @@ def stream_one(
             payload["prompt_cache_options"] = {"mode": "explicit"}
         if cache_key:
             payload["prompt_cache_key"] = cache_key
+        if model.get("gateway") == "openrouter":
+            payload["model"] = model["gateway_model"]
+            payload["provider"] = {"only": [model["gateway_provider"]], "allow_fallbacks": False}
         endpoint = "/v1/responses"
     else:
         payload = {

@@ -33,6 +33,16 @@ sol <- sol[sol$used_in_fit, ]
 exploratory <- read_table("outputs/exploratory/request_observations.csv")
 claude_5_5 <- read_table("outputs/claude-5.5/request_observations.csv")
 
+raw_session_rows <- function(directory, label_pattern, panel) {
+  do.call(rbind, lapply(sort(list.files(file.path(repo_root, directory), pattern = "\\.jsonl$", full.names = TRUE)), function(path) {
+    session <- jsonlite::fromJSON(readLines(path, n = 1))
+    if (!grepl(label_pattern, session$label)) return(NULL)
+    records <- jsonlite::stream_in(file(path), verbose = FALSE)
+    records <- records[records$type == "sample" & records$kind == "measured" & records$valid, ]
+    rows(panel, records$total_input_tokens / 1e6, records$ttft_ns / 1e9, paste(session$session, records$repetition))
+  }))
+}
+
 headline_rows <- function(model, panel) {
   d <- headline[headline$model == model, ]
   rows(panel, d$total_input_tokens / 1e6, d$ttft_seconds, d$block)
@@ -53,6 +63,7 @@ claude_5_5_rows <- function(model) {
 observations <- rbind(
   headline_rows("GPT-5.6 Terra", "GPT-5.6 Terra"),
   headline_rows("GPT-5.6 Sol", "GPT-5.6 Sol"),
+  raw_session_rows("data/raw/luna-openrouter", "shared-prefix$", "GPT-6 Luna (via OpenRouter)"),
   rows("GPT-6 Astra", astra$x, astra$y, astra$block),
   sol_rows("gpt-6-sol", "GPT-6 Sol"),
   sol_rows("gpt-6.1-sol", "GPT-6.1 Sol"),
@@ -159,19 +170,19 @@ ncol <- 3
 nrow <- ceiling(length(panel_order) / ncol)
 export_figure("figure_all_models_with_floor", function() {
   grid.newpage()
-  text_grob("Time to first token against context length, every model measured so far", 0.05, 0.982, 17, face = "bold")
+  text_grob("Time to first token against context length, every model measured so far", 0.05, 0.987, 17, face = "bold")
   text_grob("Same shared-prefix protocol throughout. Curvature is the quadratic coefficient in seconds per million tokens squared.\nThe floor fit may not slope or bend downward; its 95% interval is in brackets where neither limit binds.",
-    0.05, 0.958, 11.5, color = muted)
+    0.05, 0.969, 11.5, color = muted)
   draw_legend(list(
     list(kind = "line", color = teal, label = "Epoch's Student-t fit"),
     list(kind = "line", color = floor_color, label = "Floor fit", lwd = 3),
     list(kind = "point", color = scales::alpha(dot, 0.8), label = "Raw request"),
     list(kind = "point", color = floor_color, label = "Fastest request")
-  ), 0.918, x = 0.05)
-  top <- 0.895
-  bottom <- 0.085
+  ), 0.938, x = 0.05)
+  top <- 0.92
+  bottom <- 0.06
   gap_x <- 0.035
-  gap_y <- 0.03
+  gap_y <- 0.025
   width <- (0.90 - gap_x * (ncol - 1)) / ncol
   height <- (top - bottom - gap_y * (nrow - 1)) / nrow
   for (index in seq_along(panel_order)) {
@@ -183,18 +194,18 @@ export_figure("figure_all_models_with_floor", function() {
     place(make_panel(panel_order[[index]]), left, panel_top - height, width, height - 0.016)
   }
   text_grob("Input context (thousand tokens)", 0.5, bottom - 0.006, 11, color = body_ink, just = c("center", "top"))
-  grid.lines(x = unit(c(0.05, 0.95), "npc"), y = unit(c(0.04, 0.04), "npc"), gp = gpar(col = grid_line, lwd = 1))
-  text_grob("GPT and Claude 5 data: Epoch AI (CC-BY). Claude 5.5 data: own sessions on Epoch's collector. Fits recomputed identically for every panel.",
-    0.05, 0.03, 9.5, color = muted, just = c("left", "top"))
-  text_grob("henrilemoine.com", 0.95, 0.03, 9.5, color = muted, just = c("right", "top"))
-}, width = 12.6, height = 15.4)
+  grid.lines(x = unit(c(0.05, 0.95), "npc"), y = unit(c(0.032, 0.032), "npc"), gp = gpar(col = grid_line, lwd = 1))
+  text_grob("GPT and Claude 5 data: Epoch AI (CC-BY). Claude 5.5 and GPT-6 Luna data: own sessions on Epoch's collector. Fits recomputed identically for every panel.",
+    0.05, 0.025, 9.5, color = muted, just = c("left", "top"))
+  text_grob("henrilemoine.com", 0.95, 0.025, 9.5, color = muted, just = c("right", "top"))
+}, width = 12.6, height = 19)
 
 # ------------------------------------------------------- extrapolation ------
 # Epoch's fit is the Student-t degree its AICc prefers; the floor fit is the
 # constrained quadratic, drawn dashed where its curvature is held at zero.
 
 family_colors <- c(
-  "GPT-5.6 Terra" = magenta, "GPT-5.6 Sol" = orange, "GPT-6 Astra" = "#a03010", "GPT-6 Sol" = "#c89000",
+  "GPT-5.6 Terra" = magenta, "GPT-5.6 Sol" = orange, "GPT-6 Luna (via OpenRouter)" = "#d060a0", "GPT-6 Astra" = "#a03010", "GPT-6 Sol" = "#c89000",
   "GPT-6.1 Sol" = "#806040", "Claude Sonnet 5, Aug 14" = teal, "Claude Sonnet 5, Aug 13" = "#70c8c8",
   "Claude Opus 5, Aug 13" = blue, "Claude Opus 5, Aug 14" = "#70a0f0", "Claude Haiku 5.5" = "#8030c0",
   "Claude Sonnet 5.5" = "#208050", "Claude Opus 5.5" = "#102060"
@@ -257,7 +268,7 @@ export_figure("figure_all_models_extrapolation", function() {
   text_grob("Measured data end below 1 million tokens; beyond that, these are stress-test extrapolations, not forecasts.\nClaude Sonnet 5.5's floor would bend downward, so its curvature is held at zero. Claude Opus 5.5's floor\ncurvature is undetermined (95% interval -11 to 28).",
     0.08, 0.088, 10, color = muted)
   grid.lines(x = unit(c(0.08, 0.92), "npc"), y = unit(c(0.035, 0.035), "npc"), gp = gpar(col = grid_line, lwd = 1))
-  text_grob("GPT and Claude 5 data: Epoch AI (CC-BY). Claude 5.5 data: own sessions. Fits recomputed.", 0.08, 0.026, 9.5, color = muted, just = c("left", "top"))
+  text_grob("GPT and Claude 5 data: Epoch AI (CC-BY). Claude 5.5 and GPT-6 Luna data: own sessions.", 0.08, 0.026, 9.5, color = muted, just = c("left", "top"))
   text_grob("henrilemoine.com", 0.92, 0.026, 9.5, color = muted, just = c("right", "top"))
 }, width = 8.6, height = 12.4)
 

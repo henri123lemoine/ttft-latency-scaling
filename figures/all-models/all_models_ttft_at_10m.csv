@@ -1,6 +1,7 @@
 "source","panel","degree","minutes"
 "epoch","GPT-5.6 Terra","quadratic",14.312050977709
 "epoch","GPT-5.6 Sol","quadratic",19.2973570799828
+"epoch","GPT-6 Luna (via OpenRouter)","quadratic",14.3518787258736
 "epoch","GPT-6 Astra","quadratic",22.8237880758871
 "epoch","GPT-6 Sol","quadratic",21.1090671384325
 "epoch","GPT-6.1 Sol","quadratic",9.92354044604678
@@ -13,6 +14,7 @@
 "epoch","Claude Opus 5.5","linear",3.92701444008592
 "floor","GPT-5.6 Terra","quadratic",13.3979490884328
 "floor","GPT-5.6 Sol","quadratic",19.9228099370637
+"floor","GPT-6 Luna (via OpenRouter)","quadratic",14.0781929605795
 "floor","GPT-6 Astra","quadratic",25.3707941952318
 "floor","GPT-6 Sol","quadratic",22.165999427497
 "floor","GPT-6.1 Sol","quadratic",10.0846122577278
