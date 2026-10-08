@@ -1,7 +1,7 @@
 PYTHON ?= python3
 RSCRIPT ?= Rscript
 
-.PHONY: floor validate results figures reproduce astra astra-results astra-figures exploratory exploratory-results
+.PHONY: floor validate results figures reproduce astra astra-results astra-figures exploratory exploratory-results sol-api sol-api-results sol-api-figures sol-api-validate
 
 validate:
 	$(PYTHON) scripts/validate_release.py
@@ -36,3 +36,15 @@ floor:
 	uv run analysis/floor_update.py
 	$(RSCRIPT) analysis/figures_floor.R
 	$(RSCRIPT) analysis/figures_floor_update.R
+
+sol-api-results:
+	$(RSCRIPT) analysis/sol_api.R
+	$(RSCRIPT) analysis/sol_api_validate.R
+
+sol-api-figures:
+	$(RSCRIPT) analysis/sol_api_figures.R
+
+sol-api-validate:
+	$(PYTHON) scripts/validate_sol_api.py
+
+sol-api: sol-api-results sol-api-figures sol-api-validate
