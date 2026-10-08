@@ -1,0 +1,32 @@
+<p>Draft follow-up to <a href="https://henrilemoine.com/blog/ttft-floor/">Contra Epoch on Opus TTFT Scaling</a>. I reran Epoch's shared-prefix protocol on Claude Haiku 5.5, Sonnet 5.5 and Opus 5.5 on October 7: time to first token at eight context lengths from 50k to 900k tokens, a shared 2k cached prefix, every length once per pass, thinking off. Haiku got 8 passes, Sonnet 5 and Opus 4, for $94 in total. All 136 requests succeeded, and none produced a thinking block.</p>
+
+<p>The fits are the same two as in the post: Epoch's Student-t fit through every request, and a quadratic through the fastest request at each length.</p>
+
+{{figure_1_claude_5_5_with_floor}}
+
+<p>Haiku 5.5 curves upward under both fits. Its Student-t γ is 14.4, with quadratic preferred over linear by 68 AICc points, and its floor γ is 17.4 (95% interval 2.8 to 32.1, p = 0.03). γ is the quadratic coefficient in seconds per (million tokens)². For scale, Opus 5's floor γ was 9.3 and 4.3 in its two sessions.</p>
+
+<p>Sonnet 5.5 and Opus 5.5 are not settled. Epoch's criterion picks linear for both, narrowly (by 2.9 and 1.2 AICc points). Their floors are too ragged to say anything: Sonnet's floor γ is −14.0 (−53 to 25) and Opus's is 5.9 (−21 to 33).</p>
+
+{{figure_2_claude_5_5_curvature}}
+
+<p>The raggedness comes from a handful of requests that returned far faster than the others at the same length. One 900k-token Sonnet 5.5 request took 5.4 s when the other four took 14 to 24 s. One 550k Sonnet request took 3.8 s against 9 to 12 s. Two of the eight 550k Haiku requests took about 3 s against 6 to 8.5 s. Each reported the same 2k cache read as every other request.</p>
+
+<p>Under the post's premise, that noise only ever slows a request down, those fast requests are the best view of the serving curve, and every other request at those lengths is the noise. If that is right, four or five passes are not enough to reach the floor at most lengths, and the floor fit here is drawn through a mix of true-floor points and slow ones. The alternative is that the fast requests took a different path (other hardware, or cache reuse that isn't reported), in which case the floor mixes two curves. This data cannot tell those apart. More passes can: if the fast requests are the floor, more of them will show up at every length.</p>
+
+{{figure_3_claude_5_5_extrapolation}}
+
+<p>Extrapolations follow the same pattern as the post, with the caveat that only Haiku's floor is well enough determined to extrapolate.</p>
+
+<h2>Conclusions</h2>
+
+<p>Weakly held:</p>
+
+<ul>
+<li>Haiku 5.5's TTFT is quadratic in context length, with curvature at least as large as Opus 5's.</li>
+<li>Sonnet 5.5 is consistent with linear under Epoch's fit, with a steeper slope than Sonnet 5 (17 against 12 seconds per million tokens). Its floor is undetermined.</li>
+<li>Opus 5.5 is undetermined at 4 passes. Its requests are noisy and slower than Opus 5's: the median at 900k tokens is 30 s, against 21 s and 16 s in Opus 5's two sessions.</li>
+<li>Requests several times faster than their peers exist at long contexts for both Haiku and Sonnet 5.5. None of Epoch's Claude 5 or GPT-5.6 sessions has a request under 60% of the median for its length.</li>
+</ul>
+
+<p>Data, fits and figure code: <a href="https://github.com/henri123lemoine/ttft-latency-scaling/pull/1">my fork</a> (<code>data/raw/claude-5.5/</code>, <code>analysis/claude_5_5.py</code>, <code>analysis/claude_5_5.R</code>, <code>analysis/figures_claude_5_5.R</code>). Collected with Epoch's collector from <a href="https://github.com/epoch-research/ttft-latency-scaling">epoch-research/ttft-latency-scaling</a> (MIT). Opus 5.5 cannot disable thinking, so it ran with adaptive thinking at low effort; Sonnet 5.5 used its <code>between_tools</code> setting.</p>

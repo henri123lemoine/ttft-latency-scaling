@@ -2,18 +2,16 @@
 
 # Epoch's Student-t (df = 4) linear and quadratic fits with sum-contrast block
 # effects, as in analysis/reproduce.R, for the Claude 5.5 shared-prefix sessions.
-# Adds a whole-block bootstrap of the quadratic Huber refit and a floor figure.
+# Adds a whole-block bootstrap of the quadratic Huber refit.
 
 suppressPackageStartupMessages({
   library(jsonlite)
   library(MASS)
-  library(ggplot2)
 })
 
 set.seed(20261007)
 bootstrap_count <- as.integer(Sys.getenv("CLAUDE_5_5_BOOTSTRAP", "2000"))
 dir.create("outputs/claude-5.5", recursive = TRUE, showWarnings = FALSE)
-dir.create("figures", showWarnings = FALSE)
 
 model_names <- c(
   "claude-haiku-5-5" = "Claude Haiku 5.5",
@@ -142,33 +140,3 @@ for (model_name in levels(observations$model)) {
 table <- do.call(rbind, rows)
 write.csv(table, "outputs/claude-5.5/student_t_fits.csv", row.names = FALSE)
 print(format(table, digits = 3), row.names = FALSE)
-
-observations$fast <- with(observations, ttft < 0.6 * ave(ttft, model, x, FUN = median))
-floor <- aggregate(ttft ~ model + x, observations[!observations$fast, ], min)
-curve <- do.call(rbind, lapply(split(floor, floor$model, drop = TRUE), function(d) {
-  grid <- data.frame(x = seq(0.05, 0.9, length.out = 100))
-  rbind(
-    data.frame(model = d$model[1], x = grid$x, fit = "linear",
-               ttft = predict(lm(ttft ~ x, d), grid)),
-    data.frame(model = d$model[1], x = grid$x, fit = "quadratic",
-               ttft = predict(lm(ttft ~ x + I(x^2), d), grid))
-  )
-}))
-plot <- ggplot(observations[!observations$fast, ], aes(x * 1000, ttft)) +
-  geom_point(alpha = 0.35, size = 1.2, colour = "grey35") +
-  geom_line(data = curve, aes(linetype = fit), colour = "#b5442e", linewidth = 0.6) +
-  geom_point(data = floor, colour = "#b5442e", size = 2) +
-  geom_point(data = observations[observations$fast, ], shape = 1, size = 2.2, colour = "#2a6f97") +
-  facet_wrap(~model, scales = "free_y") +
-  scale_linetype_manual(values = c(linear = "dashed", quadratic = "solid"), name = "Floor fit") +
-  labs(
-    x = "Input tokens (thousands)", y = "Time to first token (s)",
-    title = "Claude 5.5 TTFT by context length, 2026-10-07",
-    subtitle = paste(
-      "Grey: every request. Red: fastest request at each length, with linear and quadratic fits.",
-      "Blue rings: requests under 60% of their length's median, left out of the floor.", sep = "\n"
-    )
-  ) +
-  theme_minimal(base_size = 11) +
-  theme(legend.position = "bottom", panel.grid.minor = element_blank())
-ggsave("figures/claude-5.5-floor.png", plot, width = 11, height = 4.4, dpi = 160)
