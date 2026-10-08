@@ -165,7 +165,7 @@ def count_tokens(
         payload = {
             "model": model["model"],
             "input": blocks(model, stable, suffix, cached),
-            "reasoning": {"effort": "none"},
+            "reasoning": {"effort": model.get("reasoning_effort", "none")},
         }
         response = client.post("/v1/responses/input_tokens", json=payload)
     else:
@@ -489,8 +489,8 @@ def stream_one(
         payload: dict[str, Any] = {
             "model": model["model"],
             "input": messages,
-            "max_output_tokens": benchmark["max_output_tokens"],
-            "reasoning": {"effort": "none"},
+            "max_output_tokens": model.get("max_output_tokens", benchmark["max_output_tokens"]),
+            "reasoning": {"effort": model.get("reasoning_effort", "none")},
             "service_tier": "default",
             "stream": True,
             "store": False,
