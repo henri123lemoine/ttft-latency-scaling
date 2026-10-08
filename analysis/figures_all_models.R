@@ -72,6 +72,7 @@ fit_panel <- function(panel) {
   data <- observations[observations$panel == panel, ]
   data$block <- factor(data$block)
   student <- fit_student(data, 2)
+  linear <- fit_student(data, 1)
   floor <- aggregate(y ~ x, data, min)
   floor_model <- lm(y ~ x + I(x^2), floor)
   interval <- confint(floor_model)["I(x^2)", ]
@@ -81,7 +82,8 @@ fit_panel <- function(panel) {
       panel = panel, passes = nlevels(data$block), requests = nrow(data),
       student_alpha = unname(student$beta["(Intercept)"]), student_beta = unname(student$beta["x"]),
       student_gamma = unname(student$beta["I(x^2)"]),
-      student_delta_aicc = fit_student(data, 1)$aicc - student$aicc,
+      student_delta_aicc = linear$aicc - student$aicc,
+      student_linear_alpha = unname(linear$beta["(Intercept)"]), student_linear_beta = unname(linear$beta["x"]),
       floor_alpha = unname(coef(floor_model)[1]), floor_beta = unname(coef(floor_model)[2]),
       floor_gamma = unname(coef(floor_model)[3]), floor_gamma_low = interval[[1]], floor_gamma_high = interval[[2]],
       floor_p = summary(floor_model)$coefficients["I(x^2)", "Pr(>|t|)"]
@@ -155,6 +157,81 @@ export_figure("figure_all_models_with_floor", function() {
     0.05, 0.03, 9.5, color = muted, just = c("left", "top"))
   text_grob("henrilemoine.com", 0.95, 0.03, 9.5, color = muted, just = c("right", "top"))
 }, width = 12.6, height = 15.4)
+
+# ------------------------------------------------------- extrapolation ------
+# Epoch's fit is the Student-t degree its AICc prefers; the floor fit is always
+# quadratic. A floor fit that turns negative before 10 million tokens is not drawn.
+
+family_colors <- c(
+  "GPT-5.6 Terra" = magenta, "GPT-5.6 Sol" = orange, "GPT-6 Astra" = "#a03010", "GPT-6 Sol" = "#c89000",
+  "GPT-6.1 Sol" = "#806040", "Claude Sonnet 5, Aug 14" = teal, "Claude Sonnet 5, Aug 13" = "#70c8c8",
+  "Claude Opus 5, Aug 13" = blue, "Claude Opus 5, Aug 14" = "#70a0f0", "Claude Haiku 5.5" = "#8030c0",
+  "Claude Sonnet 5.5" = "#208050", "Claude Opus 5.5" = "#102060"
+)
+x_million <- seq(1, 10, length.out = 451)
+extrapolation_rows <- function(source) do.call(rbind, lapply(panel_order, function(panel) {
+  s <- summary_table[summary_table$panel == panel, ]
+  seconds <- if (source == "floor") {
+    s$floor_alpha + s$floor_beta * x_million + s$floor_gamma * x_million^2
+  } else if (s$student_delta_aicc > 0) {
+    s$student_alpha + s$student_beta * x_million + s$student_gamma * x_million^2
+  } else {
+    s$student_linear_alpha + s$student_linear_beta * x_million
+  }
+  if (any(seconds < 0)) return(NULL)
+  degree <- if (source == "floor" || s$student_delta_aicc > 0) "quadratic" else "linear"
+  data.frame(panel = panel, x = x_million, minutes = seconds / 60, degree = degree)
+}))
+
+spread_labels <- function(ends, gap) {
+  ends <- ends[order(ends$minutes), ]
+  ends$label_y <- ends$minutes
+  for (i in seq_len(nrow(ends))[-1]) ends$label_y[i] <- max(ends$label_y[i], ends$label_y[i - 1] + gap)
+  ends
+}
+
+extrapolation_panel <- function(source, y_max = 30) {
+  curves <- extrapolation_rows(source)
+  curves$panel <- factor(curves$panel, levels = panel_order)
+  ends <- spread_labels(curves[curves$x == 10, ], gap = y_max * 0.043)
+  ends$label <- sprintf("%.1f min  %s", ends$minutes, ends$panel)
+  ggplot(curves, aes(x = x, y = minutes, color = panel, group = panel)) +
+    geom_line(aes(linetype = degree), linewidth = 0.95, lineend = "round") +
+    geom_segment(data = ends, aes(x = 10.03, xend = 10.2, y = minutes, yend = label_y), linewidth = 0.3) +
+    geom_text(data = ends, aes(x = 10.25, y = label_y, label = label), hjust = 0, vjust = 0.5,
+      family = font_family, size = 3.5) +
+    scale_color_manual(values = family_colors) +
+    scale_linetype_manual(values = c(linear = "22", quadratic = "solid")) +
+    scale_x_continuous(breaks = c(1, 3, 5, 7, 9), limits = c(1, 13.6), expand = expansion(mult = 0)) +
+    scale_y_continuous(breaks = seq(0, y_max, 10), limits = c(0, y_max + 1), expand = expansion(mult = 0)) +
+    coord_cartesian(clip = "off") +
+    panel_theme
+}
+
+export_figure("figure_all_models_extrapolation", function() {
+  grid.newpage()
+  text_grob("Extrapolated to 10 million tokens, every model measured so far", 0.08, 0.98, 15.5, face = "bold")
+  text_grob("Top: Epoch's Student-t fit, linear or quadratic as its AICc prefers. Bottom: quadratic floor fit.",
+    0.08, 0.955, 11.5, color = muted)
+  draw_legend(list(
+    list(kind = "line", color = body_ink, label = "Quadratic fit"),
+    list(kind = "line", color = body_ink, label = "Linear fit", lty = "22")
+  ), 0.925)
+  text_grob("Epoch's fit: time to first token (minutes)", 0.08, 0.90, 11, color = body_ink)
+  place(extrapolation_panel("epoch"), 0.08, 0.525, 0.84, 0.36)
+  text_grob("Floor fit: time to first token (minutes)", 0.08, 0.495, 11, color = body_ink)
+  place(extrapolation_panel("floor"), 0.08, 0.12, 0.84, 0.36)
+  text_grob("Input context (million tokens)", 0.08 + 0.84 * 0.33, 0.108, 11, color = body_ink, just = c("center", "top"))
+  text_grob("Measured data end below 1 million tokens; beyond that, these are stress-test extrapolations, not forecasts.\nClaude Sonnet 5.5's floor fit bends downward and is not drawn. Claude Opus 5.5's floor curvature is\nundetermined (95% interval -11 to 28).",
+    0.08, 0.088, 10, color = muted)
+  grid.lines(x = unit(c(0.08, 0.92), "npc"), y = unit(c(0.035, 0.035), "npc"), gp = gpar(col = grid_line, lwd = 1))
+  text_grob("GPT and Claude 5 data: Epoch AI (CC-BY). Claude 5.5 data: own sessions. Fits recomputed.", 0.08, 0.026, 9.5, color = muted, just = c("left", "top"))
+  text_grob("henrilemoine.com", 0.92, 0.026, 9.5, color = muted, just = c("right", "top"))
+}, width = 8.6, height = 12.4)
+
+extrapolated <- rbind(cbind(source = "epoch", extrapolation_rows("epoch")), cbind(source = "floor", extrapolation_rows("floor")))
+write.csv(extrapolated[extrapolated$x == 10, c("source", "panel", "degree", "minutes")],
+  file.path(output_dir, "all_models_ttft_at_10m.csv"), row.names = FALSE)
 
 print(format(summary_table[, c("panel", "passes", "student_gamma", "student_delta_aicc", "floor_gamma",
   "floor_gamma_low", "floor_gamma_high", "floor_p")], digits = 3), row.names = FALSE)

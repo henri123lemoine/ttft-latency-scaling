@@ -1,0 +1,24 @@
+"source","panel","degree","minutes"
+"epoch","GPT-5.6 Terra","quadratic",14.312050977709
+"epoch","GPT-5.6 Sol","quadratic",19.2973570799828
+"epoch","GPT-6 Astra","quadratic",22.8237880758871
+"epoch","GPT-6 Sol","quadratic",21.1090671384325
+"epoch","GPT-6.1 Sol","quadratic",9.92354044604678
+"epoch","Claude Sonnet 5, Aug 14","linear",2.16441555927895
+"epoch","Claude Sonnet 5, Aug 13","linear",2.20740350043659
+"epoch","Claude Opus 5, Aug 13","linear",3.65865881737334
+"epoch","Claude Opus 5, Aug 14","linear",2.54956223276357
+"epoch","Claude Haiku 5.5","quadratic",24.4130353939731
+"epoch","Claude Sonnet 5.5","linear",3.21289580571806
+"epoch","Claude Opus 5.5","linear",3.92701444008592
+"floor","GPT-5.6 Terra","quadratic",13.3979490884328
+"floor","GPT-5.6 Sol","quadratic",19.9228099370637
+"floor","GPT-6 Astra","quadratic",25.3707941952318
+"floor","GPT-6 Sol","quadratic",22.165999427497
+"floor","GPT-6.1 Sol","quadratic",10.0846122577278
+"floor","Claude Sonnet 5, Aug 14","quadratic",2.62955174170349
+"floor","Claude Sonnet 5, Aug 13","quadratic",2.86118471891777
+"floor","Claude Opus 5, Aug 13","quadratic",17.5904569350212
+"floor","Claude Opus 5, Aug 14","quadratic",8.86265922812845
+"floor","Claude Haiku 5.5","quadratic",28.4622410881411
+"floor","Claude Opus 5.5","quadratic",14.1472698731291
