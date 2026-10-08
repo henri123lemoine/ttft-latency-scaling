@@ -111,6 +111,8 @@ fit_panel <- function(panel) {
   floor_model <- lm(y ~ x + I(x^2), floor)
   interval <- confint(floor_model)["I(x^2)", ]
   constrained <- constrained_quadratic(floor$x, floor$y)
+  pass_gammas <- vapply(split(data, data$block), function(pass) unname(coef(lm(y ~ x + I(x^2), pass))[3]), numeric(1))
+  pass_half <- qt(0.975, length(pass_gammas) - 1) * sd(pass_gammas) / sqrt(length(pass_gammas))
   list(
     points = data, floor = floor,
     summary = data.frame(
@@ -124,7 +126,9 @@ fit_panel <- function(panel) {
       unconstrained_floor_alpha = unname(coef(floor_model)[1]), unconstrained_floor_beta = unname(coef(floor_model)[2]),
       unconstrained_floor_gamma = unname(coef(floor_model)[3]),
       unconstrained_floor_gamma_low = interval[[1]], unconstrained_floor_gamma_high = interval[[2]],
-      unconstrained_floor_p = summary(floor_model)$coefficients["I(x^2)", "Pr(>|t|)"]
+      unconstrained_floor_p = summary(floor_model)$coefficients["I(x^2)", "Pr(>|t|)"],
+      per_pass_gamma = mean(pass_gammas), per_pass_gamma_low = mean(pass_gammas) - pass_half,
+      per_pass_gamma_high = mean(pass_gammas) + pass_half
     )
   )
 }
@@ -275,6 +279,55 @@ export_figure("figure_all_models_extrapolation", function() {
 extrapolated <- rbind(cbind(source = "epoch", extrapolation_rows("epoch")), cbind(source = "floor", extrapolation_rows("floor")))
 write.csv(extrapolated[extrapolated$x == 10, c("source", "panel", "degree", "minutes")],
   file.path(output_dir, "all_models_ttft_at_10m.csv"), row.names = FALSE)
+
+# ----------------------------------------------------------- curvature ------
+# Two intervals per session, as in the post: the unconstrained floor fit, and
+# one quadratic per chronological pass.
+
+interval_rows <- do.call(rbind, lapply(panel_order, function(panel) {
+  s <- summary_table[summary_table$panel == panel, ]
+  label <- sprintf("%s (%d passes)", panel, s$passes)
+  rbind(
+    data.frame(label = label, method = "Floor fit", estimate = s$unconstrained_floor_gamma,
+      low = s$unconstrained_floor_gamma_low, high = s$unconstrained_floor_gamma_high),
+    data.frame(label = label, method = "One quadratic per pass", estimate = s$per_pass_gamma,
+      low = s$per_pass_gamma_low, high = s$per_pass_gamma_high)
+  )
+}))
+interval_rows$label <- factor(interval_rows$label, levels = rev(unique(interval_rows$label)))
+interval_rows$method <- factor(interval_rows$method, levels = c("Floor fit", "One quadratic per pass"))
+
+curvature_panel <- ggplot(interval_rows, aes(y = label, color = method)) +
+  geom_vline(xintercept = 0, color = body_ink, linewidth = 0.5) +
+  geom_errorbarh(aes(xmin = low, xmax = high), height = 0, linewidth = 1.1,
+    position = position_dodge(width = 0.55), lineend = "round") +
+  geom_point(aes(x = estimate), size = 2.8, position = position_dodge(width = 0.55)) +
+  scale_color_manual(values = c("Floor fit" = floor_color, "One quadratic per pass" = teal)) +
+  scale_x_continuous(limits = c(-50, 50), breaks = seq(-40, 40, 20), expand = expansion(mult = 0)) +
+  panel_theme +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.major.x = element_line(color = grid_line, linewidth = 0.5),
+    axis.line.x = element_blank(),
+    axis.text.y = element_text(size = 10.5, color = body_ink, hjust = 0, margin = margin(r = 10))
+  )
+
+export_figure("figure_all_models_curvature", function() {
+  grid.newpage()
+  text_grob("Curvature of time to first token, every model measured so far", 0.08, 0.972, 15.5, face = "bold")
+  draw_legend(list(
+    list(kind = "line", color = floor_color, label = "Floor fit, 95% interval", lwd = 3),
+    list(kind = "line", color = teal, label = "One quadratic per chronological pass, mean and 95% interval", lwd = 3)
+  ), 0.925)
+  place(curvature_panel, 0.08, 0.19, 0.84, 0.71)
+  text_grob("Quadratic coefficient of TTFT in context length (seconds per million tokens squared)",
+    0.08 + 0.84 * 0.62, 0.175, 11, color = body_ink, just = c("center", "top"))
+  text_grob("The floor fit uses only the fastest request at each length, here without the no-downward limit so that its\ninterval is the ordinary one. The per-pass fit uses every request in one sweep over all lengths.",
+    0.08, 0.115, 10, color = muted)
+  grid.lines(x = unit(c(0.08, 0.92), "npc"), y = unit(c(0.045, 0.045), "npc"), gp = gpar(col = grid_line, lwd = 1))
+  text_grob("GPT and Claude 5 data: Epoch AI (CC-BY). Claude 5.5 and GPT-6 Luna data: own sessions.", 0.08, 0.033, 9.5, color = muted, just = c("left", "top"))
+  text_grob("henrilemoine.com", 0.92, 0.033, 9.5, color = muted, just = c("right", "top"))
+}, width = 8.6, height = 9.6)
 
 print(format(summary_table[, c("panel", "passes", "student_gamma", "student_delta_aicc", "floor_beta", "floor_gamma",
   "floor_bound", "unconstrained_floor_gamma")], digits = 3), row.names = FALSE)
