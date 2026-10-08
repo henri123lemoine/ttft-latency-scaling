@@ -4,7 +4,8 @@
 # ///
 """Floor fits for the Claude 5.5 shared-prefix sessions in data/raw/claude-5.5.
 
-Same floor method as analysis/floor.py, applied per session: a quadratic through
+A model's same-day sessions are pooled into one run (per-session floors are kept in
+`per_session`). Same floor method as analysis/floor.py: a quadratic through
 the per-length minimum TTFT, the curvature F-test, a 95% interval on gamma, a
 whole-block bootstrap, and marginal latency. Opus 5.5 cannot disable thinking, so
 it is also fit on the time to the first content block of any kind.
@@ -122,11 +123,43 @@ def fit_timer(session: dict, column: str, rng: np.random.Generator, exclude_fast
     }
 
 
+def pool(sessions: list[dict]) -> dict:
+    """One model's sessions as a single run, with passes numbered across sessions in order."""
+    rows, offset = [], 0
+    for s in sessions:
+        rows += [{**r, "block": r["block"] + offset, "session_id": s["session_id"]} for r in s["rows"]]
+        offset += len({r["block"] for r in s["rows"]})
+    return {
+        "session_id": "+".join(s["session_id"] for s in sessions),
+        "label": sessions[0]["label"],
+        "model": sessions[0]["model"],
+        "started": [s["started"] for s in sessions],
+        **{k: sum(s[k] for s in sessions) for k in
+           ["requests", "measured", "valid", "noncompliant_output", "with_thinking_blocks", "estimated_cost_usd"]},
+        "stop_reasons": sorted({reason for s in sessions for reason in s["stop_reasons"]}),
+        "rows": rows,
+    }
+
+
+def session_floor(session: dict) -> dict:
+    rows = [(str(r["block"]), r["x"], r["ttft_seconds"]) for r in session["rows"]]
+    xs, floor = per_length_min(rows)
+    return {
+        "session_id": session["session_id"],
+        "started": session["started"],
+        "blocks": len({r["block"] for r in session["rows"]}),
+        "floor": [{"x": float(x), "seconds": float(y)} for x, y in zip(xs, floor)],
+        "floor_fit": curvature_test(xs, floor),
+        "floor_gamma_interval": floor_gamma_interval(xs, floor),
+    }
+
+
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(SEED)
-    sessions = [s for s in (read_session(p) for p in sorted(RAW.glob("*.jsonl"))) if s]
-    sessions.sort(key=lambda s: list(MODEL_NAMES.values()).index(s["model"]))
+    single = [s for s in (read_session(p) for p in sorted(RAW.glob("*.jsonl"))) if s]
+    per_session = {name: [session_floor(s) for s in single if s["model"] == name] for name in MODEL_NAMES.values()}
+    sessions = [pool([s for s in single if s["model"] == name]) for name in MODEL_NAMES.values() if per_session[name]]
     with open(OUT / "request_observations.csv", "w", newline="") as f:
         w = csv.writer(f)
         w.writerow(
@@ -136,7 +169,7 @@ def main() -> None:
         for s in sessions:
             for r in s["rows"]:
                 w.writerow(
-                    [s["model"], s["session_id"], r["block"], r["target_tokens"], r["total_input_tokens"],
+                    [s["model"], r["session_id"], r["block"], r["target_tokens"], r["total_input_tokens"],
                      r["ttft_seconds"], r["first_content_seconds"], r["thinking_blocks"]]
                 )
     results = []
@@ -146,7 +179,10 @@ def main() -> None:
             "first_content": fit_timer(s, "first_content_seconds", rng),
             "ttft_excluding_fast": fit_timer(s, "ttft_seconds", rng, exclude_fast=True),
         }
-        results.append({**{k: v for k, v in s.items() if k != "rows"}, "blocks": len({r["block"] for r in s["rows"]}), "fits": fits})
+        results.append(
+            {**{k: v for k, v in s.items() if k != "rows"}, "blocks": len({r["block"] for r in s["rows"]}),
+             "per_session": per_session[s["model"]], "fits": fits}
+        )
     (OUT / "fits.json").write_text(
         json.dumps({"generated_by": "analysis/claude_5_5.py", "seed": SEED, "sessions": results}, indent=1) + "\n"
     )
@@ -183,6 +219,13 @@ def main() -> None:
                     f" {mf['gamma_interval']['ci95'][1]:.2f}] p={mf['p_value']:.3g}  fast={len(fit['fast_requests'])}"
                 )
         for s in results:
+            for one in s["per_session"]:
+                ci = one["floor_gamma_interval"]["ci95"]
+                print(
+                    f"{s['model']:18s} session {one['session_id']} blocks={one['blocks']}"
+                    f" floor γ={one['floor_fit']['quadratic']['gamma']:.2f} [{ci[0]:.2f}, {ci[1]:.2f}]"
+                    f" p={one['floor_fit']['p_value']:.3g}"
+                )
             print(
                 f"{s['model']:18s} valid={s['valid']}/{s['measured']} thinking={s['with_thinking_blocks']}"
                 f" noncompliant={s['noncompliant_output']} stop={s['stop_reasons']} cost=${s['estimated_cost_usd']:.2f}"

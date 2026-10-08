@@ -178,7 +178,7 @@ export_figure("figure_2_claude_5_5_curvature", function() {
   place(curvature_panel, 0.08, 0.30, 0.84, 0.53)
   text_grob("Quadratic coefficient of TTFT in context length (seconds per million tokens squared)",
     0.08 + 0.84 * 0.6, 0.275, 11, color = body_ink, just = c("center", "top"))
-  draw_footer("The floor fit uses only the fastest request at each length. With four or five passes, a single unusually\nfast request moves the floor at its length, which is what widens the Sonnet 5.5 and Opus 5.5 intervals.",
+  draw_footer("The floor fit uses only the fastest request at each length. At nine or ten passes, a few unusually fast\nrequests still set the floor at some lengths and not others, which widens the Sonnet 5.5 and Opus 5.5 intervals.",
     caption_y = 0.135)
 }, width = 8.6, height = 6.6)
 

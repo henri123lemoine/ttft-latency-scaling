@@ -30,7 +30,7 @@ read_run <- function(path) {
     x = records$target_tokens / 1e6,
     ttft = records$ttft_ns / 1e9,
     first_content = records$first_content_ns / 1e9,
-    block = factor(records$repetition + 1)
+    block = paste(session$session, records$repetition + 1)
   )
 }
 
@@ -103,6 +103,7 @@ runs <- Filter(Negate(is.null), lapply(
 ))
 observations <- do.call(rbind, runs)
 observations$model <- factor(observations$model, levels = unname(model_names))
+observations$block <- factor(observations$block)
 
 rows <- list()
 observations$model <- droplevels(observations$model)
